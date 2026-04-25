@@ -1,0 +1,20 @@
+[package]
+name = "statarbrust"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1"
+tokio = { version = "1", features = ["full"] }
+reqwest = { version = "0.12", features = ["json"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+csv = "1"
+plotters = "0.3"
+plotters-svg = "0.3"
+yahoo_finance_api = "2.0"
+ndarray = "0.15"
+linfa = "0.7"
+linfa-linear = "0.7"
+chrono = "0.4.44"
+
