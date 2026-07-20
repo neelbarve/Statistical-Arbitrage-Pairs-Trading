@@ -1,25 +1,25 @@
-pub fn forecast_spread_ar1(spread: &[f64], steps: usize) -> Vec<f64> {
-    let n = spread.len();
-    let window = &spread[n - 100..];
+// pub fn forecast_spread_ar1(spread: &[f64], steps: usize) -> Vec<f64> {
+//     let n = spread.len();
+//     let window = &spread[n - 100..];
 
-    let mut num = 0.0;
-    let mut den = 0.0;
-    for i in 0..window.len() - 1 {
-        num += window[i] * window[i + 1];
-        den += window[i] * window[i];
-    }
-    let phi = num / den;
+//     let mut num = 0.0;
+//     let mut den = 0.0;
+//     for i in 0..window.len() - 1 {
+//         num += window[i] * window[i + 1];
+//         den += window[i] * window[i];
+//     }
+//     let phi = num / den;
 
-    let mut out = Vec::new();
-    let mut last = spread[n - 1];
+//     let mut out = Vec::new();
+//     let mut last = spread[n - 1];
 
-    for _ in 0..steps {
-        last = phi * last;
-        out.push(last);
-    }
+//     for _ in 0..steps {
+//         last = phi * last;
+//         out.push(last);
+//     }
 
-    out
-}
+//     out
+// }
 
 pub fn normalize_with_last_window(hist: &[f64], pred: &[f64]) -> Vec<f64> {
     let w = 20;

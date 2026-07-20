@@ -160,7 +160,7 @@ pub fn plot_signals_with_forecast_svg(
     forecast_signals: &[Signal],
 ) -> anyhow::Result<()> {
 
-    let root = SVGBackend::new(path, (1400, 600)).into_drawing_area();
+    let root = BitMapBackend::new(path, (900, 700)).into_drawing_area();
     root.fill(&WHITE)?;
 
     let min_y = -4.0;
@@ -224,26 +224,231 @@ pub fn plot_signals_with_forecast_svg(
 
 
 
+// pub fn plot_prices_with_signals_svg(
+//     path: &str,
+//     title: &str,
+//     dates_hist: &[NaiveDate],
+//     price_A: &[f64],
+//     price_B: &[f64],
+//     //signals_hist: &[Signal],
+//     signals_hist: &[StockSignal],
+//     dates_fore: &[NaiveDate],
+//     forecast_A: &[f64],
+//     forecast_B: &[f64],
+//     //signals_fore: &[Signal],
+//     signals_fore: &[StockSignal],
+// ) -> anyhow::Result<()> {
+
+//     let root = SVGBackend::new(path, (1400, 700)).into_drawing_area();
+//     root.fill(&WHITE)?;
+
+//     let min_price = price_A.iter().chain(price_B).cloned().fold(f64::INFINITY, f64::min);
+//     let max_price = price_A.iter().chain(price_B).cloned().fold(f64::NEG_INFINITY, f64::max);
+
+//     let mut chart = ChartBuilder::on(&root)
+//         .caption(title, ("sans-serif", 28))
+//         .margin(20)
+//         .set_all_label_area_size(50)
+//         .build_cartesian_2d(
+//             dates_hist[0]..dates_fore[dates_fore.len() - 1],
+//             min_price..max_price,
+//         )?;
+
+//     chart.configure_mesh()
+//         .x_labels(15)
+//         .x_label_formatter(&|d| d.format("%Y-%m-%d").to_string())
+//         .draw()?;
+
+//     // Historical A
+//     chart.draw_series(LineSeries::new(
+//         dates_hist.iter().zip(price_A).map(|(d, p)| (*d, *p)),
+//         &BLUE,
+//     ))?;
+
+//     // Historical B
+//     chart.draw_series(LineSeries::new(
+//         dates_hist.iter().zip(price_B).map(|(d, p)| (*d, *p)),
+//         &ORANGE,
+//     ))?;
+
+//     // Forecast A
+//     chart.draw_series(LineSeries::new(
+//         dates_fore.iter().zip(forecast_A).map(|(d, p)| (*d, *p)),
+//         &BLUE.mix(0.5),
+//     ))?;
+
+//     // Forecast B
+//     chart.draw_series(LineSeries::new(
+//         dates_fore.iter().zip(forecast_B).map(|(d, p)| (*d, *p)),
+//         &ORANGE.mix(0.5),
+//     ))?;
+
+//     // Historical signals
+//     // for i in 0..signals_hist.len() {
+//     //     let d = dates_hist[i];
+//     //     match signals_hist[i] {
+//     //         Signal::LongSpread => {
+//     //             chart.draw_series(std::iter::once(Circle::new((d, price_A[i]), 4, GREEN.filled())))?;
+//     //             chart.draw_series(std::iter::once(Circle::new((d, price_B[i]), 4, GREEN.filled())))?;
+//     //         }
+//     //         Signal::ShortSpread => {
+//     //             chart.draw_series(std::iter::once(Circle::new((d, price_A[i]), 4, RED.filled())))?;
+//     //             chart.draw_series(std::iter::once(Circle::new((d, price_B[i]), 4, RED.filled())))?;
+//     //         }
+//     //         _ => {}
+//     //     }
+//     // }
+
+//     // Historical per-stock signals
+//     // for i in 0..signals_hist.len() {
+//     //     let d = dates_hist[i];
+//     //     match signals_hist[i] {
+//     //         StockSignal::BuyA => {
+//     //             chart.draw_series(std::iter::once(TriangleMarker::new((d, price_A[i]), 4, GREEN.filled())))?;
+//     //         }
+//     //         StockSignal::SellA => {
+//     //             chart.draw_series(std::iter::once(TriangleMarker::new((d, price_A[i]), 4, RED.filled())))?;
+//     //         }
+//     //         StockSignal::BuyB => {
+//     //             chart.draw_series(std::iter::once(TriangleMarker::new((d, price_B[i]), 4, GREEN.filled())))?;
+//     //         }
+//     //         StockSignal::SellB => {
+//     //             chart.draw_series(std::iter::once(TriangleMarker::new((d, price_B[i]), 4, RED.filled())))?;
+//     //         }
+//     //         StockSignal::Flat => {}
+//     //     }
+//     // }
+
+//         // --- HISTORICAL SIGNAL MARKERS (TRIANGLES) ---
+//     for i in 0..signals_hist.len() {
+//         let d = dates_hist[i];
+//         match signals_hist[i] {
+//             StockSignal::BuyA => {
+//                 chart.draw_series(std::iter::once(
+//                     TriangleMarker::new((d, price_A[i]), 6, GREEN.filled())
+//                 ))?;
+//             }
+//             StockSignal::SellA => {
+//                 chart.draw_series(std::iter::once(
+//                     TriangleMarker::new((d, price_A[i]), 6, RED.filled())
+//                 ))?;
+//             }
+//             StockSignal::BuyB => {
+//                 chart.draw_series(std::iter::once(
+//                     TriangleMarker::new((d, price_B[i]), 6, GREEN.filled())
+//                 ))?;
+//             }
+//             StockSignal::SellB => {
+//                 chart.draw_series(std::iter::once(
+//                     TriangleMarker::new((d, price_B[i]), 6, RED.filled())
+//                 ))?;
+//             }
+//             _ => {}
+//         }
+//     }
+
+
+
+//     // --- FORECAST SIGNAL MARKERS (CIRCLES ONLY FOR 5 DAYS) ---
+//     for i in 0..signals_fore.len() {
+//         let d = dates_fore[i];
+
+//         match signals_fore[i] {
+//             StockSignal::BuyA => {
+//                 chart.draw_series(std::iter::once(
+//                     Circle::new((d, forecast_A[i]), 6, GREEN.filled())
+//                 ))?;
+//             }
+//             StockSignal::SellA => {
+//                 chart.draw_series(std::iter::once(
+//                     Circle::new((d, forecast_A[i]), 6, RED.filled())
+//                 ))?;
+//             }
+//             StockSignal::BuyB => {
+//                 chart.draw_series(std::iter::once(
+//                     Circle::new((d, forecast_B[i]), 6, GREEN.filled())
+//                 ))?;
+//             }
+//             StockSignal::SellB => {
+//                 chart.draw_series(std::iter::once(
+//                     Circle::new((d, forecast_B[i]), 6, RED.filled())
+//                 ))?;
+//             }
+//             _ => {}
+//         }
+//     }
+
+
+//         // --- FORECAST PRICE LINES (DASHED) ---
+//     use plotters::style::ShapeStyle;
+
+//     // helper: draw dashed line between points
+//     fn draw_dashed_line<'a, DB: DrawingBackend>(
+//         chart: &mut ChartContext<DB, Cartesian2d<NaiveDate, f64>>,
+//         dates: &[NaiveDate],
+//         values: &[f64],
+//         color: RGBColor,
+//     ) -> Result<(), DrawingErrorKind<DB::ErrorType>> {
+//         let dash = 6;
+//         let gap = 6;
+
+//         for i in 1..dates.len() {
+//             let x0 = dates[i - 1];
+//             let y0 = values[i - 1];
+//             let x1 = dates[i];
+//             let y1 = values[i];
+
+//             // draw small segments to simulate dashes
+//             chart.draw_series(std::iter::once(PathElement::new(
+//                 vec![(x0, y0), (x1, y1)],
+//                 ShapeStyle {
+//                     color: color.to_rgba(),
+//                     filled: false,
+//                     stroke_width: 2,
+//                 },
+//             )))?;
+//         }
+
+//         Ok(())
+//     }
+
+//     // call dashed line drawer
+//     draw_dashed_line(&mut chart, dates_fore, forecast_A, BLUE.mix(0.6))?;
+//     draw_dashed_line(&mut chart, dates_fore, forecast_B, ORANGE.mix(0.6))?;
+//
+
+// U P D A T E D P R I C E  LINES  T O  SOLID  FOR  BETTER VISIBILITY WITH SIGNALS
 pub fn plot_prices_with_signals_svg(
     path: &str,
     title: &str,
     dates_hist: &[NaiveDate],
     price_A: &[f64],
     price_B: &[f64],
-    //signals_hist: &[Signal],
     signals_hist: &[StockSignal],
     dates_fore: &[NaiveDate],
     forecast_A: &[f64],
     forecast_B: &[f64],
-    //signals_fore: &[Signal],
     signals_fore: &[StockSignal],
 ) -> anyhow::Result<()> {
-
-    let root = SVGBackend::new(path, (1400, 700)).into_drawing_area();
+    let root = BitMapBackend::new(path, (900, 700)).into_drawing_area();
     root.fill(&WHITE)?;
 
-    let min_price = price_A.iter().chain(price_B).cloned().fold(f64::INFINITY, f64::min);
-    let max_price = price_A.iter().chain(price_B).cloned().fold(f64::NEG_INFINITY, f64::max);
+    // include forecast in min/max so scale fits everything
+    let min_price = price_A
+        .iter()
+        .chain(price_B)
+        .chain(forecast_A)
+        .chain(forecast_B)
+        .cloned()
+        .fold(f64::INFINITY, f64::min);
+
+    let max_price = price_A
+        .iter()
+        .chain(price_B)
+        .chain(forecast_A)
+        .chain(forecast_B)
+        .cloned()
+        .fold(f64::NEG_INFINITY, f64::max);
 
     let mut chart = ChartBuilder::on(&root)
         .caption(title, ("sans-serif", 28))
@@ -254,93 +459,120 @@ pub fn plot_prices_with_signals_svg(
             min_price..max_price,
         )?;
 
-    chart.configure_mesh()
+    chart
+        .configure_mesh()
         .x_labels(15)
         .x_label_formatter(&|d| d.format("%Y-%m-%d").to_string())
         .draw()?;
 
-    // Historical A
+    // --- HISTORICAL PRICES ---
     chart.draw_series(LineSeries::new(
-        dates_hist.iter().zip(price_A).map(|(d, p)| (*d, *p)),
+        dates_hist.iter().zip(price_A.iter()).map(|(d, p)| (*d, *p)),
         &BLUE,
     ))?;
 
-    // Historical B
     chart.draw_series(LineSeries::new(
-        dates_hist.iter().zip(price_B).map(|(d, p)| (*d, *p)),
+        dates_hist.iter().zip(price_B.iter()).map(|(d, p)| (*d, *p)),
         &ORANGE,
     ))?;
 
-    // Forecast A
+    // --- FORECAST PRICES (VISUALLY SEPARATE: LIGHTER COLORS) ---
     chart.draw_series(LineSeries::new(
-        dates_fore.iter().zip(forecast_A).map(|(d, p)| (*d, *p)),
-        &BLUE.mix(0.5),
+        dates_fore.iter().zip(forecast_A.iter()).map(|(d, p)| (*d, *p)),
+        &BLUE.mix(0.6),
     ))?;
 
-    // Forecast B
     chart.draw_series(LineSeries::new(
-        dates_fore.iter().zip(forecast_B).map(|(d, p)| (*d, *p)),
-        &ORANGE.mix(0.5),
+        dates_fore.iter().zip(forecast_B.iter()).map(|(d, p)| (*d, *p)),
+        &ORANGE.mix(0.6),
     ))?;
 
-    // Historical signals
-    // for i in 0..signals_hist.len() {
-    //     let d = dates_hist[i];
-    //     match signals_hist[i] {
-    //         Signal::LongSpread => {
-    //             chart.draw_series(std::iter::once(Circle::new((d, price_A[i]), 4, GREEN.filled())))?;
-    //             chart.draw_series(std::iter::once(Circle::new((d, price_B[i]), 4, GREEN.filled())))?;
-    //         }
-    //         Signal::ShortSpread => {
-    //             chart.draw_series(std::iter::once(Circle::new((d, price_A[i]), 4, RED.filled())))?;
-    //             chart.draw_series(std::iter::once(Circle::new((d, price_B[i]), 4, RED.filled())))?;
-    //         }
-    //         _ => {}
-    //     }
-    // }
-
-    // Historical per-stock signals
+    // --- HISTORICAL SIGNALS: TRIANGLES ---
     for i in 0..signals_hist.len() {
         let d = dates_hist[i];
         match signals_hist[i] {
             StockSignal::BuyA => {
-                chart.draw_series(std::iter::once(TriangleMarker::new((d, price_A[i]), 2, GREEN.filled())))?;
+                chart.draw_series(std::iter::once(
+                    TriangleMarker::new((d, price_A[i]), 4, GREEN.filled()),
+                ))?;
             }
             StockSignal::SellA => {
-                chart.draw_series(std::iter::once(TriangleMarker::new((d, price_A[i]), 2, RED.filled())))?;
+                chart.draw_series(std::iter::once(
+                    TriangleMarker::new((d, price_A[i]), 4, RED.filled()),
+                ))?;
             }
             StockSignal::BuyB => {
-                chart.draw_series(std::iter::once(TriangleMarker::new((d, price_B[i]), 2, GREEN.filled())))?;
+                chart.draw_series(std::iter::once(
+                    TriangleMarker::new((d, price_B[i]), 4, GREEN.filled()),
+                ))?;
             }
             StockSignal::SellB => {
-                chart.draw_series(std::iter::once(TriangleMarker::new((d, price_B[i]), 2, RED.filled())))?;
+                chart.draw_series(std::iter::once(
+                    TriangleMarker::new((d, price_B[i]), 4, RED.filled()),
+                ))?;
             }
             StockSignal::Flat => {}
         }
     }
 
-
-    // Forecast per-stock signals
+    // --- FORECAST SIGNALS: CIRCLES (ONLY 5 DAYS) ---
     for i in 0..signals_fore.len() {
         let d = dates_fore[i];
         match signals_fore[i] {
             StockSignal::BuyA => {
-                chart.draw_series(std::iter::once(Circle::new((d, forecast_A[i]), 6, GREEN.filled())))?;
+                chart.draw_series(std::iter::once(
+                    Circle::new((d, forecast_A[i]), 5, GREEN.filled()),
+                ))?;
             }
             StockSignal::SellA => {
-                chart.draw_series(std::iter::once(Circle::new((d, forecast_A[i]), 6, RED.filled())))?;
+                chart.draw_series(std::iter::once(
+                    Circle::new((d, forecast_A[i]), 5, RED.filled()),
+                ))?;
             }
             StockSignal::BuyB => {
-                chart.draw_series(std::iter::once(Circle::new((d, forecast_B[i]), 6, GREEN.filled())))?;
+                chart.draw_series(std::iter::once(
+                    Circle::new((d, forecast_B[i]), 5, GREEN.filled()),
+                ))?;
             }
             StockSignal::SellB => {
-                chart.draw_series(std::iter::once(Circle::new((d, forecast_B[i]), 6, RED.filled())))?;
+                chart.draw_series(std::iter::once(
+                    Circle::new((d, forecast_B[i]), 5, RED.filled()),
+                ))?;
             }
             StockSignal::Flat => {}
         }
     }
 
-
     root.present()?;
     Ok(())
 }
+
+
+// Plot side by side with signals, so we can visually verify that signals align with price movements as expected.
+// use plotters::prelude::*;
+// pub fn plot_two_charts_side_by_side<F1, F2>(
+//     path: &str,
+//     left_plot: F1,
+//     right_plot: F2,
+// ) -> anyhow::Result<()>
+// where
+//     F1: Fn(&DrawingArea<SVGBackend, Shift>),
+//     F2: Fn(&DrawingArea<SVGBackend, Shift>),
+// {
+//     // Create a wide SVG canvas
+//     let root = SVGBackend::new(path, (1800, 700)).into_drawing_area();
+//     root.fill(&WHITE)?;
+
+//     // Split horizontally into two equal halves
+//     let (left_area, right_area) = root.split_horizontally(900);
+
+//     // Draw left chart
+//     left_plot(&left_area);
+
+//     // Draw right chart
+//     right_plot(&right_area);
+
+//     root.present()?;
+//     Ok(())
+// }
+

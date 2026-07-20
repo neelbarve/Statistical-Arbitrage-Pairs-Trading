@@ -5,22 +5,23 @@ mod universe;
 
 use anyhow::Result;
 use universe::energy_list::energy_universe;
+use std::io::Write;
 use universe::fetch_all::fetch_universe;
 use universe::correlation::correlation_matrix;
 use universe::cointegration_scan::scan_cointegration;
 use model::spread::{hedge_ratio_ols, spread, zscore, rolling_zscore, std_spread};
 use engine::backtest::{backtest_pair, BacktestResult};
-use universe::export::export_backtests;
 use engine::align::align_series;
-use universe::plots::{plot_series_svg, plot_prices_with_signals_svg, plot_zscore_with_signals_svg, plot_signals_with_forecast_svg};
-use universe::export_html::export_svg_dashboard;
-use crate::engine::forecast::{forecast_spread_ar1, normalize_with_last_window};
-use crate::engine::signals::{Signal, generate_signals, trade_direction};
+use universe::export::export_backtests;
+use universe::plots::{plot_series_svg, plot_prices_with_signals_svg, plot_signals_with_forecast_svg};
+use crate::engine::forecast::{normalize_with_last_window};
+use crate::engine::signals::{generate_signals, trade_direction};
 use chrono::NaiveDate;
 use crate::model::forecast::forecast_arma12;
-//use crate::universe::plots::plot_prices_with_signals_svg;
 use crate::engine::signals::{per_stock_signals, StockSignal};
-use crate::engine::signals::per_stock_signals_from_spread;
+
+
+//use crate::engine::signals::per_stock_signals_from_spread;
 
 
 
@@ -34,7 +35,7 @@ use crate::engine::signals::per_stock_signals_from_spread;
 #[tokio::main]
 async fn main() -> Result<()> {
 
-    let mut svg_files = Vec::<String>::new();
+    let mut chart_files = Vec::<String>::new();
 
     // Create output folder if it doesn't exist
     std::fs::create_dir_all("output")?;
@@ -84,11 +85,6 @@ async fn main() -> Result<()> {
         let n = xa.len().min(yb.len());
         let (x, y) = (&xa[..n], &yb[..n]);
 
-
-        let forecast_A = forecast_arma12(&xa, 5)?;
-        let forecast_B = forecast_arma12(&yb, 5)?;
-
-
         let (alpha, beta) = hedge_ratio_ols(x, y)?;
         let spr = spread(alpha, beta, x, y);
         let z = zscore(&spr);
@@ -102,13 +98,7 @@ async fn main() -> Result<()> {
     // 7. Backtest + charts
     let mut results = Vec::<BacktestResult>::new();
 
-
-    let target_pair = ("COP", "EOG");   // choose your test pair
-
     for (a, b, _, _) in &coint_pairs {
-        if (a.as_str(), b.as_str()) != target_pair {
-        continue;
-        }
         let xa = data.iter().find(|(n, _, _)| n == a).unwrap().1.clone();
         let yb = data.iter().find(|(n, _, _)| n == b).unwrap().1.clone();
         let n = xa.len().min(yb.len());
@@ -116,37 +106,41 @@ async fn main() -> Result<()> {
 
         let (alpha, beta) = hedge_ratio_ols(x, y)?;
         let spr = spread(alpha, beta, x, y);
-        let z = zscore(&spr);
-        let rz = rolling_zscore(&spr, 5, 20);
-        let sigs = generate_signals(&rz, 1.0, 0.5);
+        let _z = zscore(&spr);
+        let rz = rolling_zscore(&spr, 10, 40);
+        let sigs = generate_signals(&rz, 1.5, 0.5);
 
         let forecast_A = forecast_arma12(&xa, 5)?;
         let forecast_B = forecast_arma12(&yb, 5)?;
 
 
                 // ---- 5-DAY FORECAST ----
-        let forecast_spread = forecast_spread_ar1(&spr, 5);
+        let forecast_spread = forecast_arma12(&spr, 5)?;
+        //let forecast_spread = forecast_spread; 
         let forecast_z = normalize_with_last_window(&spr, &forecast_spread);
-        let forecast_sigs = generate_signals(&forecast_z, 1.0, 0.5);
-
-        // --- Compute per-stock forecast signals ---
-        let forecast_stock_sigs = per_stock_signals_from_spread(
-            &forecast_sigs,
-            &xa[xa.len() - forecast_sigs.len()..],          // last 5 historical prices for A
-            &yb[yb.len() - forecast_sigs.len()..],          // last 5 historical prices for B
-            //1.25,  // threshold ratio for signal generation
-            // &forecast_A,
-            // &forecast_B,
-        );
+        let forecast_sigs = generate_signals(&forecast_z, 0.2, 0.1);
 
 
         // --- Historical per-stock signals ---
-        let stock_sigs = per_stock_signals_from_spread(
-            &sigs,
-            &xa,
-            &yb,
-            //1.25,  // threshold ratio for signal generation
-        );
+        let mut stock_sigs = per_stock_signals(&sigs, &xa, &yb);
+        // --- FIX: pad signals to match price length ---
+        while stock_sigs.len() < xa.len() {
+            stock_sigs.insert(0, StockSignal::Flat);
+        }
+
+        // --- Compute per-stock forecast signals ---
+        // let forecast_stock_sigs = per_stock_signals(
+        //     &forecast_sigs,       
+        //     &forecast_A,
+        //     &forecast_B,
+        // );
+        let mut forecast_stock_sigs = per_stock_signals(&forecast_sigs, &forecast_A, &forecast_B);
+        while forecast_stock_sigs.len() < forecast_A.len() {
+            forecast_stock_sigs.insert(0, StockSignal::Flat);
+        }
+
+
+
 
 
         // --- STEP 3: Build forecast dates (5 days ahead) ---
@@ -156,37 +150,10 @@ async fn main() -> Result<()> {
             .collect();
 
 
-        let out_path = format!("output/{}_{}_signals.svg", a, b);
-
-        plot_signals_with_forecast_svg(
-            &out_path,
-            &format!("Signals for {}-{}", a, b),
-            &hist_dates,
-            &rz,
-            &sigs,
-            &forecast_dates,
-            &forecast_z,
-            &forecast_sigs,
-        )?;
-
-        plot_prices_with_signals_svg(
-            &out_path,
-            &format!("Price + Signals for {}-{}", a, b),
-            &hist_dates,
-            &xa,
-            &yb,
-            //&sigs,
-            &stock_sigs,
-            &forecast_dates,
-            &forecast_A,
-            &forecast_B,
-            //&forecast_sigs,
-            &forecast_stock_sigs,
-        )?;
-
-
-        println!("Saved chart to {}", out_path);
-
+        //let out_path_signals = format!("output/{}_{}_signals.svg", a, b);
+        let left_png= format!("output/{}_{}_signals.png", a, b);
+        let right_png = format!("output/{}_{}_prices.png", a, b);
+        //let out_path_prices  = format!("output/{}_{}_prices.svg", a, b);
 
 
         // Convert to BUY/SELL instructions
@@ -212,6 +179,116 @@ async fn main() -> Result<()> {
             }
         }
 
+
+        // Debug prints 
+        println!("hist_dates.len() = {}", hist_dates.len());
+        println!("xa.len() = {}", xa.len());
+        println!("yb.len() = {}", yb.len());
+        println!("sigs.len() = {}", sigs.len());
+        println!("stock_sigs.len() = {}", stock_sigs.len());
+        //println!("Non-flat stock_sigs = {}", stock_sigs.iter().filter(|s| **s == StockSignal::Flat).count());
+
+        println!("forecast_A.len() = {}", forecast_A.len());
+        println!("forecast_sigs.len() = {}", forecast_sigs.len());
+        println!("forecast_stock_sigs.len() = {}", forecast_stock_sigs.len());
+        //println!("Non-flat forecast_stock_sigs = {}", forecast_stock_sigs.iter().filter(|s| **s == StockSignal::Flat).count());
+
+
+        plot_signals_with_forecast_svg(
+            &left_png,
+            &format!("Signals for {}-{}", a, b),
+            &hist_dates,
+            &rz,
+            &sigs,
+            &forecast_dates,
+            &forecast_z,
+            &forecast_sigs,
+        )?;
+
+        // pub fn plot_signals_with_forecast_area(
+        //     area: &DrawingArea<SVGBackend, Shift>,
+        //     title: &str,
+        //     dates_hist: &[NaiveDate],
+        //     rz: &[f64],
+        //     sigs: &[Signal],
+        //     dates_fore: &[NaiveDate],
+        //     forecast_z: &[f64],
+        //     forecast_sigs: &[Signal],
+        // ) {
+        //     let root = area.clone();
+        //     let _ = root.fill(&WHITE);
+
+        //     // same logic as your SVG version
+        // }
+
+
+        plot_prices_with_signals_svg(
+            &right_png,
+            &format!("Price + Signals for {}-{}", a, b),
+            &hist_dates,
+            &xa,
+            &yb,
+            &stock_sigs,
+            &forecast_dates,
+            &forecast_A,
+            &forecast_B,
+            &forecast_stock_sigs,
+        )?;
+
+        chart_files.push(left_png.clone());
+        chart_files.push(right_png.clone());
+
+        // let combined_path = format!("output/{}_{}_combined.svg", a, b);
+        // plot_two_charts_side_by_side(
+        //     &combined_path,
+        //     &out_path_signals,
+        //     &out_path_prices,
+        // )?;
+
+        // let combined_svg = format!("output/{}_{}_combined.svg", a, b);
+        // combine_two_pngs_side_by_side(
+        //     &combined_svg,
+        //     &left_png,
+        //     &right_png,
+        // )?;
+
+        let _combined_path = format!("output/{}_{}_combined.svg", a, b);
+
+        // plot_two_charts_side_by_side(
+        //     &_combined_path,
+        //     |area| {
+        //         plot_signals_with_forecast_area(
+        //             area,
+        //             &format!("Signals for {}-{}", a, b),
+        //             &hist_dates,
+        //             &rz,
+        //             &sigs,
+        //             &forecast_dates,
+        //             &forecast_z,
+        //             &forecast_sigs,
+        //         );
+        //     },
+        //     |area| {
+        //         plot_prices_with_signals_area(
+        //             area,
+        //             &format!("Price + Signals for {}-{}", a, b),
+        //             &hist_dates,
+        //             &xa,
+        //             &yb,
+        //             &stock_sigs,
+        //             &forecast_dates,
+        //             &forecast_A,
+        //             &forecast_B,
+        //             &forecast_stock_sigs,
+        //         );
+        //     },
+        // )?;
+
+
+
+        //println!("Saved chart to {} and {}", out_path_signals, out_path_prices);
+        //println!("Saved charts to {}, {}, and {}", left_png, right_png, combined_svg);
+
         // Print trade directions for debugging
         // for i in 0..sigs.len() {
         //     if let Some((long_side, short_side)) = trade_direction(a, b, sigs[i]) {
@@ -224,10 +301,10 @@ async fn main() -> Result<()> {
 
         //     }
         // }
-        let filename_prefix = format!("{}_{}", a, b);
+        let _filename_prefix = format!("{}_{}", a, b);
 
         // --- FIXED: define paths ---
-        //let spread_path = format!("output/spread_{}.svg", filename_prefix);
+        //let spread_path = format!("output/spread_{}.svg", _filename_prefix);
         //let zscore_path = format!("output/zscore_{}.svg", filename_prefix);
         //let sig_path = format!("output/signals_{}.svg", filename_prefix);
 
@@ -247,7 +324,8 @@ async fn main() -> Result<()> {
         //std::thread::sleep(std::time::Duration::from_millis(30));
 
         // --- Backtest ---
-        let mut bt = backtest_pair(x, y, &sigs, 1.0);
+        // Use brokerage charge of 0.02% per leg per transition (0.0002)
+        let mut bt = backtest_pair(x, y, &sigs, 1.0, 0.0002);
         bt.pair = (a.clone(), b.clone());
         results.push(bt);
     }
@@ -263,7 +341,9 @@ async fn main() -> Result<()> {
     //         a, b, i, long_side, short_side
     //     );
     // }
+    //
 
+    
 
 
     // 9. Strategy summary
@@ -278,8 +358,8 @@ async fn main() -> Result<()> {
         let spr = spread(alpha, beta, x, y);
         let sd = std_spread(&spr);
 
-        let notional = 1.25 ;  // target 1.25 SD move in spread
-        let var_95 = 1.65 * sd* notional;
+        let notional = 1.5*sd ;  // target 1.5 SD move in spread
+        let var_95 = 1.65 * notional;
         let last_spread = *spr.last().unwrap();
 
         println!(
@@ -289,8 +369,10 @@ async fn main() -> Result<()> {
     }
 
     // 10. Export backtests
-    //export_backtests("backtests_energy.csv", &results)?;
-    //println!("Exported {} backtests to backtests_energy.csv", results.len());
+    println!("About to write {} backtests to output/backtests_energy.csv", results.len());
+    std::io::stdout().flush().ok();
+    export_backtests("output/backtests_energy.csv", &results)?;
+    println!("Exported {} backtests to output/backtests_energy.csv", results.len());
 
     Ok(())
 }

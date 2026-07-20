@@ -7,16 +7,56 @@ pub enum Signal {
 }
 
 
-pub fn zscore_ratio(price_A: &[f64], price_B: &[f64]) -> Vec<f64> {
-    let ratio: Vec<f64> = price_A.iter().zip(price_B).map(|(a, b)| a / b).collect();
+// pub fn zscore_ratio(price_A: &[f64], price_B: &[f64]) -> Vec<f64> {
+//     let ratio: Vec<f64> = price_A.iter().zip(price_B).map(|(a, b)| a / b).collect();
 
-    let mean = ratio.iter().sum::<f64>() / ratio.len() as f64;
-    let std = (ratio.iter().map(|r| (r - mean).powi(2)).sum::<f64>() / ratio.len() as f64).sqrt();
+//     let mean = ratio.iter().sum::<f64>() / ratio.len() as f64;
+//     let std = (ratio.iter().map(|r| (r - mean).powi(2)).sum::<f64>() / ratio.len() as f64).sqrt();
 
-    ratio.iter().map(|r| (r - mean) / std).collect()
-}
+//     ratio.iter().map(|r| (r - mean) / std).collect()
+// }
 
-pub fn per_stock_signals_from_spread(
+// pub fn per_stock_signals_from_spread(
+//     spread_signals: &[Signal],
+//     price_A: &[f64],
+//     price_B: &[f64],
+// ) -> Vec<StockSignal> {
+//     let mut out = Vec::new();
+
+//     for i in 1..spread_signals.len() {
+//         let dA = price_A[i] - price_A[i - 1];
+//         let dB = price_B[i] - price_B[i - 1];
+
+//         match spread_signals[i] {
+//             Signal::ShortSpread => {
+//                 // Spread too high → A is rich relative to B
+//                 // SELL the one that jumped more
+//                 if dA > dB {
+//                     out.push(StockSignal::SellA);
+//                 } else {
+//                     out.push(StockSignal::SellB);
+//                 }
+//             }
+//             Signal::LongSpread => {
+//                 // Spread too low → A is cheap relative to B
+//                 // BUY the one that fell more
+//                 if dA < dB {
+//                     out.push(StockSignal::BuyA);
+//                 } else {
+//                     out.push(StockSignal::BuyB);
+//                 }
+//             }
+//             _ => out.push(StockSignal::Flat),
+//         }
+//     }
+
+//     // align length
+//     out.insert(0, StockSignal::Flat);
+//     out
+// }
+
+
+pub fn per_stock_signals(
     spread_signals: &[Signal],
     price_A: &[f64],
     price_B: &[f64],
@@ -29,7 +69,7 @@ pub fn per_stock_signals_from_spread(
 
         match spread_signals[i] {
             Signal::ShortSpread => {
-                // Spread too high → A is rich relative to B
+                // Spread too high → A rich relative to B
                 // SELL the one that jumped more
                 if dA > dB {
                     out.push(StockSignal::SellA);
@@ -38,7 +78,7 @@ pub fn per_stock_signals_from_spread(
                 }
             }
             Signal::LongSpread => {
-                // Spread too low → A is cheap relative to B
+                // Spread too low → A cheap relative to B
                 // BUY the one that fell more
                 if dA < dB {
                     out.push(StockSignal::BuyA);
@@ -50,10 +90,10 @@ pub fn per_stock_signals_from_spread(
         }
     }
 
-    // align length
     out.insert(0, StockSignal::Flat);
     out
 }
+
 
 
 // pub fn per_stock_signals_ratio_threshold(
@@ -196,6 +236,9 @@ pub enum StockSignal {
     Flat,
 }
 
+
+
+
 // pub fn per_stock_signals(
 //     spread_signals: &[Signal],
 //     price_A: &[f64],
@@ -235,31 +278,31 @@ pub enum StockSignal {
 
 // using price ratio over spread deviation for per-stock signals, 
 // since ratio is more directly interpretable and less noisy than spread deviations
-pub fn per_stock_signals(
-    spread_signals: &[Signal],
-    price_A: &[f64],
-    price_B: &[f64],
-) -> Vec<StockSignal> {
-    let mut out = Vec::new();
+// pub fn per_stock_signals(
+//     spread_signals: &[Signal],
+//     price_A: &[f64],
+//     price_B: &[f64],
+// ) -> Vec<StockSignal> {
+//     let mut out = Vec::new();
 
-    for i in 0..spread_signals.len() {
-        let ratio = price_A[i] / price_B[i];
+//     for i in 0..spread_signals.len() {
+//         let ratio = price_A[i] / price_B[i];
 
-        match spread_signals[i] {
-            Signal::LongSpread => {
-                // Spread too low → ratio too low → A is cheap, B is expensive
-                out.push(StockSignal::BuyA);
-            }
-            Signal::ShortSpread => {
-                // Spread too high → ratio too high → A is expensive, B is cheap
-                out.push(StockSignal::SellA);
-            }
-            _ => out.push(StockSignal::Flat),
-        }
-    }
+//         match spread_signals[i] {
+//             Signal::LongSpread => {
+//                 // Spread too low → ratio too low → A is cheap, B is expensive
+//                 out.push(StockSignal::BuyA);
+//             }
+//             Signal::ShortSpread => {
+//                 // Spread too high → ratio too high → A is expensive, B is cheap
+//                 out.push(StockSignal::SellA);
+//             }
+//             _ => out.push(StockSignal::Flat),
+//         }
+//     }
 
-    out
-}
+//     out
+// }
 
 
 
