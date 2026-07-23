@@ -1,0 +1,352 @@
+﻿cargo : warning: struct `WalkForwardHedgeRatio` is never constructed
+At line:1 char:1
++ cargo run *>&1 | Out-File run_output.txt -Encoding utf8; Get-Content  ...
++ ~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (warning: struct...ver constructed 
+   :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  --> src\model\spread.rs:94:12
+   |
+94 | pub struct WalkForwardHedgeRatio {
+   |            ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `walk_forward_hedge_ratio` is never used
+   --> src\model\spread.rs:109:8
+    |
+109 | pub fn walk_forward_hedge_ratio(x: &[f64], y: &[f64], lookback: usize,...
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: fields `n` and `k` are never read
+  --> src\model\ols.rs:15:9
+   |
+11 | pub struct OlsResult {
+   |            --------- fields in this struct
+...
+15 |     pub n: usize,
+   |         ^
+16 |     pub k: usize, // number of regressors (including any constant colum...
+   |         ^
+
+warning: fields `lags_used`, `crit_1pct`, `crit_5pct`, and `crit_10pct` are 
+never read
+  --> src\model\adf.rs:35:9
+   |
+33 | pub struct AdfResult {
+   |            --------- fields in this struct
+34 |     pub tstat: f64,
+35 |     pub lags_used: usize,
+   |         ^^^^^^^^^
+36 |     pub crit_1pct: f64,
+   |         ^^^^^^^^^
+37 |     pub crit_5pct: f64,
+   |         ^^^^^^^^^
+38 |     pub crit_10pct: f64,
+   |         ^^^^^^^^^^
+
+warning: field `alpha` is never read
+   --> src\model\adf.rs:136:9
+    |
+135 | pub struct EngleGrangerResult {
+    |            ------------------ field in this struct
+136 |     pub alpha: f64,
+    |         ^^^^^
+
+warning: fields `total_pnl`, `total_costs`, and `trades` are never read
+  --> src\engine\backtest.rs:27:9
+   |
+25 | pub struct BacktestResult {
+   |            -------------- fields in this struct
+26 |     pub pair: (String, String),
+27 |     pub total_pnl: f64,
+   |         ^^^^^^^^^
+28 |     pub total_costs: f64,   // NEW: reported separately so gross vs net...
+   |         ^^^^^^^^^^^
+29 |     pub trades: usize,
+   |         ^^^^^^
+   |
+   = note: `BacktestResult` has derived impls for the traits `Clone` and 
+`Debug`, but these are intentionally ignored during dead code analysis
+
+warning: function `export_backtests` is never used
+ --> src\universe\export.rs:5:8
+  |
+5 | pub fn export_backtests(path: &str, results: &[BacktestResult]) -> Resul...
+  |        ^^^^^^^^^^^^^^^^
+
+warning: function `plot_zscore_with_signals_svg` is never used
+  --> src\universe\plots.rs:40:8
+   |
+40 | pub fn plot_zscore_with_signals_svg(
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `export_svg_dashboard` is never used
+ --> src\universe\export_html.rs:4:8
+  |
+4 | pub fn export_svg_dashboard(path: &str, svg_paths: &[String]) -> anyhow:...
+  |        ^^^^^^^^^^^^^^^^^^^^
+
+warning: variable `forecast_A` should have a snake case name
+   --> src\main.rs:111:13
+    |
+111 |         let forecast_A = forecast_arma12(&xa, 5)?;
+    |             ^^^^^^^^^^ help: convert the identifier to snake case: 
+`forecast_a`
+    |
+    = note: `#[warn(non_snake_case)]` (part of `#[warn(nonstandard_style)]`) 
+on by default
+
+warning: variable `forecast_B` should have a snake case name
+   --> src\main.rs:112:13
+    |
+112 |         let forecast_B = forecast_arma12(&yb, 5)?;
+    |             ^^^^^^^^^^ help: convert the identifier to snake case: 
+`forecast_b`
+
+warning: variable `price_A` should have a snake case name
+  --> src\engine\signals.rs:61:5
+   |
+61 |     price_A: &[f64],
+   |     ^^^^^^^ help: convert the identifier to snake case: `price_a`
+
+warning: variable `price_B` should have a snake case name
+  --> src\engine\signals.rs:62:5
+   |
+62 |     price_B: &[f64],
+   |     ^^^^^^^ help: convert the identifier to snake case: `price_b`
+
+warning: variable `dA` should have a snake case name
+  --> src\engine\signals.rs:67:13
+   |
+67 |         let dA = price_A[i] - price_A[i - 1];
+   |             ^^ help: convert the identifier to snake case: `d_a`
+
+warning: variable `dB` should have a snake case name
+  --> src\engine\signals.rs:68:13
+   |
+68 |         let dB = price_B[i] - price_B[i - 1];
+   |             ^^ help: convert the identifier to snake case: `d_b`
+
+warning: variable `price_A` should have a snake case name
+   --> src\universe\plots.rs:425:5
+    |
+425 |     price_A: &[f64],
+    |     ^^^^^^^ help: convert the identifier to snake case: `price_a`
+
+warning: variable `price_B` should have a snake case name
+   --> src\universe\plots.rs:426:5
+    |
+426 |     price_B: &[f64],
+    |     ^^^^^^^ help: convert the identifier to snake case: `price_b`
+Fetching COP
+
+warning: variable `forecast_A` should have a snake case name
+   --> src\universe\plots.rs:429:5
+    |
+429 |     forecast_A: &[f64],
+    |     ^^^^^^^^^^ help: convert the identifier to snake case: `forecast_a`
+
+warning: variable `forecast_B` should have a snake case name
+   --> src\universe\plots.rs:430:5
+    |
+430 |     forecast_B: &[f64],
+    |     ^^^^^^^^^^ help: convert the identifier to snake case: `forecast_b`
+
+warning: `statarbrust` (bin "statarbrust") generated 19 warnings
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.37s
+     Running `target\debug\statarbrust.exe`
+Fetching EOG
+Fetching XOM
+Fetching CVX
+Fetching SLB
+Fetching MPC
+Fetching PSX
+Fetching VLO
+Fetching OXY
+Fetching HAL
+Fetching DVN
+Fetching FANG
+Fetching BKR
+Fetching APA
+Fetching EQT
+Top correlated pairs:
+COP/EOG corr=0.873
+COP/XOM corr=0.873
+COP/CVX corr=0.936
+COP/SLB corr=0.360
+COP/MPC corr=0.835
+Cointegrated pairs:
+COP/CVX ADF=-3.447
+EOG/FANG ADF=-4.360
+XOM/CVX ADF=-4.291
+SLB/OXY ADF=-3.598
+SLB/APA ADF=-3.757
+MPC/BKR ADF=-3.494
+VLO/BKR ADF=-3.755
+OXY/APA ADF=-3.740
+HAL/APA ADF=-4.098
+DVN/APA ADF=-3.471
+
+5-DAY FORECAST for COP-CVX:
+2026-07-18 ΓåÆ BUY COP / SELL CVX
+Day 2 ΓåÆ FLAT
+2026-07-20 ΓåÆ BUY COP / SELL CVX
+Day 4 ΓåÆ FLAT
+2026-07-22 ΓåÆ BUY COP / SELL CVX
+hist_dates.len() = 2271
+xa.len() = 2271
+yb.len() = 2271
+sigs.len() = 2271
+stock_sigs.len() = 2271
+forecast_A.len() = 5
+forecast_sigs.len() = 5
+forecast_stock_sigs.len() = 5
+
+5-DAY FORECAST for EOG-FANG:
+2026-07-18 ΓåÆ BUY EOG / SELL FANG
+Day 2 ΓåÆ FLAT
+2026-07-20 ΓåÆ BUY EOG / SELL FANG
+Day 4 ΓåÆ FLAT
+2026-07-22 ΓåÆ BUY EOG / SELL FANG
+hist_dates.len() = 2271
+xa.len() = 2271
+yb.len() = 2271
+sigs.len() = 2271
+stock_sigs.len() = 2271
+forecast_A.len() = 5
+forecast_sigs.len() = 5
+forecast_stock_sigs.len() = 5
+
+5-DAY FORECAST for XOM-CVX:
+2026-07-18 ΓåÆ BUY XOM / SELL CVX
+Day 2 ΓåÆ FLAT
+2026-07-20 ΓåÆ BUY XOM / SELL CVX
+Day 4 ΓåÆ FLAT
+2026-07-22 ΓåÆ BUY XOM / SELL CVX
+hist_dates.len() = 2271
+xa.len() = 2271
+yb.len() = 2271
+sigs.len() = 2271
+stock_sigs.len() = 2271
+forecast_A.len() = 5
+forecast_sigs.len() = 5
+forecast_stock_sigs.len() = 5
+
+5-DAY FORECAST for SLB-OXY:
+2026-07-18 ΓåÆ BUY SLB / SELL OXY
+Day 2 ΓåÆ FLAT
+2026-07-20 ΓåÆ BUY SLB / SELL OXY
+Day 4 ΓåÆ FLAT
+2026-07-22 ΓåÆ BUY SLB / SELL OXY
+hist_dates.len() = 2271
+xa.len() = 2271
+yb.len() = 2271
+sigs.len() = 2271
+stock_sigs.len() = 2271
+forecast_A.len() = 5
+forecast_sigs.len() = 5
+forecast_stock_sigs.len() = 5
+
+5-DAY FORECAST for SLB-APA:
+2026-07-18 ΓåÆ BUY SLB / SELL APA
+Day 2 ΓåÆ FLAT
+2026-07-20 ΓåÆ BUY SLB / SELL APA
+Day 4 ΓåÆ FLAT
+2026-07-22 ΓåÆ BUY SLB / SELL APA
+hist_dates.len() = 2271
+xa.len() = 2271
+yb.len() = 2271
+sigs.len() = 2271
+stock_sigs.len() = 2271
+forecast_A.len() = 5
+forecast_sigs.len() = 5
+forecast_stock_sigs.len() = 5
+
+5-DAY FORECAST for MPC-BKR:
+2026-07-18 ΓåÆ SELL MPC / BUY BKR
+Day 2 ΓåÆ FLAT
+2026-07-20 ΓåÆ SELL MPC / BUY BKR
+Day 4 ΓåÆ FLAT
+2026-07-22 ΓåÆ SELL MPC / BUY BKR
+hist_dates.len() = 2271
+xa.len() = 2271
+yb.len() = 2271
+sigs.len() = 2271
+stock_sigs.len() = 2271
+forecast_A.len() = 5
+forecast_sigs.len() = 5
+forecast_stock_sigs.len() = 5
+
+5-DAY FORECAST for VLO-BKR:
+2026-07-18 ΓåÆ SELL VLO / BUY BKR
+Day 2 ΓåÆ FLAT
+2026-07-20 ΓåÆ SELL VLO / BUY BKR
+Day 4 ΓåÆ FLAT
+2026-07-22 ΓåÆ SELL VLO / BUY BKR
+hist_dates.len() = 2271
+xa.len() = 2271
+yb.len() = 2271
+sigs.len() = 2271
+stock_sigs.len() = 2271
+forecast_A.len() = 5
+forecast_sigs.len() = 5
+forecast_stock_sigs.len() = 5
+
+5-DAY FORECAST for OXY-APA:
+2026-07-18 ΓåÆ SELL OXY / BUY APA
+Day 2 ΓåÆ FLAT
+2026-07-20 ΓåÆ SELL OXY / BUY APA
+Day 4 ΓåÆ FLAT
+2026-07-22 ΓåÆ SELL OXY / BUY APA
+hist_dates.len() = 2271
+xa.len() = 2271
+yb.len() = 2271
+sigs.len() = 2271
+stock_sigs.len() = 2271
+forecast_A.len() = 5
+forecast_sigs.len() = 5
+forecast_stock_sigs.len() = 5
+
+5-DAY FORECAST for HAL-APA:
+2026-07-18 ΓåÆ BUY HAL / SELL APA
+Day 2 ΓåÆ FLAT
+2026-07-20 ΓåÆ BUY HAL / SELL APA
+Day 4 ΓåÆ FLAT
+2026-07-22 ΓåÆ BUY HAL / SELL APA
+hist_dates.len() = 2271
+xa.len() = 2271
+yb.len() = 2271
+sigs.len() = 2271
+stock_sigs.len() = 2271
+forecast_A.len() = 5
+forecast_sigs.len() = 5
+forecast_stock_sigs.len() = 5
+
+5-DAY FORECAST for DVN-APA:
+2026-07-18 ΓåÆ BUY DVN / SELL APA
+Day 2 ΓåÆ FLAT
+2026-07-20 ΓåÆ BUY DVN / SELL APA
+Day 4 ΓåÆ FLAT
+2026-07-22 ΓåÆ BUY DVN / SELL APA
+hist_dates.len() = 2271
+xa.len() = 2271
+yb.len() = 2271
+sigs.len() = 2271
+stock_sigs.len() = 2271
+forecast_A.len() = 5
+forecast_sigs.len() = 5
+forecast_stock_sigs.len() = 5
+
+Strategy summary:
+COP / CVX | side: mean-reversion | notional: 14.83 | last_spread: -14.4925 | VaR95: 24.4701
+EOG / FANG | side: mean-reversion | notional: 14.77 | last_spread: -4.8447 | VaR95: 24.3766
+XOM / CVX | side: mean-reversion | notional: 15.22 | last_spread: 11.2169 | VaR95: 25.1057
+SLB / OXY | side: mean-reversion | notional: 9.90 | last_spread: 0.9944 | VaR95: 16.3368
+SLB / APA | side: mean-reversion | notional: 10.36 | last_spread: -2.2819 | VaR95: 17.0913
+MPC / BKR | side: mean-reversion | notional: 46.85 | last_spread: 98.7893 | VaR95: 77.3090
+VLO / BKR | side: mean-reversion | notional: 32.40 | last_spread: 109.6472 | VaR95: 53.4650
+OXY / APA | side: mean-reversion | notional: 12.78 | last_spread: -3.8787 | VaR95: 21.0814
+HAL / APA | side: mean-reversion | notional: 6.60 | last_spread: 0.5919 | VaR95: 10.8845
+DVN / APA | side: mean-reversion | notional: 14.78 | last_spread: 0.9649 | VaR95: 24.3861
