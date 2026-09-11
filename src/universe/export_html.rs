@@ -89,8 +89,9 @@ pub fn export_full_dashboard(
     writeln!(file, "    .hero {{ background: linear-gradient(135deg, #16304f, #0d1724); border-radius: 18px; padding: 24px 28px; box-shadow: 0 16px 40px rgba(0,0,0,.25); margin-bottom: 20px; }}")?;
     writeln!(file, "    .hero h1 {{ margin: 0 0 8px; font-size: 1.8rem; }}")?;
     writeln!(file, "    .hero p {{ margin: 0; color: #b6c7dd; }}")?;
-    writeln!(file, "    table {{ width: 100%; border-collapse: collapse; margin-bottom: 28px; }}")?;
-    writeln!(file, "    th, td {{ text-align: left; padding: 8px 12px; border-bottom: 1px solid #23374f; font-size: 0.92rem; }}")?;
+    writeln!(file, "    .table-wrap {{ overflow-x: auto; margin-bottom: 28px; -webkit-overflow-scrolling: touch; }}")?;
+    writeln!(file, "    table {{ width: 100%; min-width: 640px; border-collapse: collapse; }}")?;
+    writeln!(file, "    th, td {{ text-align: left; padding: 8px 12px; border-bottom: 1px solid #23374f; font-size: 0.92rem; white-space: nowrap; }}")?;
     writeln!(file, "    th {{ color: #8ca0bc; font-weight: 600; }}")?;
     writeln!(file, "    tr:hover {{ background: #0d1c30; }}")?;
     writeln!(file, "    .pos {{ color: #4ade80; }}")?;
@@ -112,6 +113,7 @@ pub fn export_full_dashboard(
     if !rankings.is_empty() {
         writeln!(file, "    <section>")?;
         writeln!(file, "      <h2>Pairs ranked best to trade (by Sharpe ratio)</h2>")?;
+        writeln!(file, "      <div class=\"table-wrap\">")?;
         writeln!(file, "      <table>")?;
         writeln!(file, "        <thead><tr><th>Rank</th><th>Pair</th><th>Entry SD</th><th>Sharpe</th><th>Max Drawdown</th><th>Net PnL</th><th>Trades</th></tr></thead>")?;
         writeln!(file, "        <tbody>")?;
@@ -133,6 +135,7 @@ pub fn export_full_dashboard(
         }
         writeln!(file, "        </tbody>")?;
         writeln!(file, "      </table>")?;
+        writeln!(file, "      </div>")?;
         writeln!(file, "    </section>")?;
     }
 

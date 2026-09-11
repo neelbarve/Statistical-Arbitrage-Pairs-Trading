@@ -600,7 +600,7 @@ pub fn plot_equity_curves_svg(
 
     chart
         .configure_mesh()
-        .x_labels(15)
+        .x_labels(8)
         .x_label_formatter(&|d| d.format("%Y-%m-%d").to_string())
         .y_desc("Cumulative net PnL")
         .draw()?;
