@@ -6,7 +6,7 @@ A Rust statistical-arbitrage pairs-trading engine for the energy sector. Fetches
 
 1. **Universe** — 15 energy tickers (`src/universe/energy_list.rs`), fetched from Yahoo Finance.
 2. **Cointegration scan** — every pair is tested with Engle-Granger + ADF (MacKinnon critical values); only cointegrated pairs move forward.
-3. **Spread & z-score** — OLS hedge ratio, spread, and a rolling z-score (10-day vs 40-day window) per pair.
+3. **Spread & z-score** — OLS hedge ratio and spread per pair, then a rolling z-score: a 10-day short moving average of the spread relative to a 40-day long moving average, divided by the spread's own standard deviation over that same **40-day lookback**. So **1 SD = 1 standard deviation of the spread over the trailing 40 bars**, recomputed at every bar (not a fixed dollar amount, and not the strategy's PnL volatility — see Assumptions below).
 4. **Signals** — mean-reversion entries at **1.5 SD** and **2.0 SD** (each backtested independently, so aggressive vs. conservative entries can be compared), exiting at 0.5 SD.
 5. **Backtest** — per-bar PnL net of transaction costs (2 bps/leg per position change), producing an equity curve, annualized volatility, a risk-free-adjusted Sharpe ratio, and max drawdown for every pair/threshold combination.
 6. **Ranking** — all pairs are ranked best-to-trade by Sharpe ratio.
@@ -90,6 +90,7 @@ dashboard/   Streamlit app that reads output/ and renders it interactively
 ## Assumptions & limitations
 
 - **Sizing**: backtests use unit notional (1.0) per pair, so PnL/Sharpe/volatility figures are in normalized units, not dollars — useful for ranking pairs against each other, not as a real P&L.
+- **Volatility lookback (results table)**: the `Volatility` and `Sharpe` columns are computed from bar-over-bar equity-curve changes over the *entire* backtest history (full sample, no rolling window), then annualized by √252 (`src/engine/backtest.rs`). This is a different lookback from the signal's own volatility estimate above (the z-score's rolling 40-day spread standard deviation) — the two "volatility" concepts in this project measure different things over different windows, so don't conflate a pair's full-sample Sharpe volatility with the 1 SD used to trigger its entries.
 - **Costs**: 2 bps per leg charged on every position change (entry, exit, or a direct long↔short flip); no market impact or partial fills modeled.
 - **Risk-free rate**: fixed at 4%/year (`RISK_FREE_RATE_ANNUAL` in `src/engine/backtest.rs`), applied per-bar against unit-notional returns — an approximation, not a real cash rate.
 - **Hedge ratio look-ahead bias**: the OLS hedge ratio (`hedge_ratio_ols`) is fit once on the *entire* price series per pair, so early trades in the backtest technically use a hedge ratio informed by the full history, including data that hadn't happened yet. A walk-forward alternative (`walk_forward_hedge_ratio` in `src/model/spread.rs`) already exists in the codebase and fixes this, but main.rs doesn't use it yet — worth wiring in before treating results as realistic.
