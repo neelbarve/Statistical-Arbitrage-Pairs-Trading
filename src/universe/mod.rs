@@ -4,5 +4,6 @@ pub mod correlation;
 pub mod stationarity;
 pub mod cointegration_scan;
 pub mod export;
+pub mod export_json;
 pub mod plots;
 pub mod export_html;

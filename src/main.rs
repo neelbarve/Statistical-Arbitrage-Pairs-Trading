@@ -13,6 +13,7 @@ use model::spread::{hedge_ratio_ols, spread, zscore, rolling_zscore, walk_forwar
 use engine::backtest::{backtest_pair, BacktestResult};
 use engine::align::align_series;
 use universe::export::export_backtests;
+use universe::export_json::{export_equity_curves, EquityCurveEntry};
 use universe::export_html::export_full_dashboard;
 use universe::plots::{plot_series_svg, plot_prices_with_signals_svg, plot_signals_with_forecast_svg, plot_equity_curves_svg};
 use crate::engine::forecast::{normalize_with_last_window};
@@ -58,6 +59,12 @@ async fn main() -> Result<()> {
     // the dashboard can lay out each pair's charts side by side instead of
     // interleaving every pair into one flat grid.
     let mut chart_groups = Vec::<(String, Vec<(String, String)>)>::new();
+
+    // Full bar-by-bar equity curves (dates + values), one entry per pair
+    // per threshold -- exported to JSON at the end for anything that wants
+    // to draw a REAL interactive chart (zoom, hover, live redraw) instead
+    // of the static PNG images plotted above. See universe/export_json.rs.
+    let mut equity_curve_entries = Vec::<EquityCurveEntry>::new();
 
     // Create output folder if it doesn't exist
     std::fs::create_dir_all("output")?;
@@ -367,6 +374,27 @@ async fn main() -> Result<()> {
             daily_dollar_vol, var_95
         );
 
+        // Capture the full equity path (dates + values) for each threshold
+        // before pair_bts is moved into `results` below -- this is the
+        // data a real interactive chart needs; the summary stats alone
+        // (Sharpe, max drawdown, ...) can't reconstruct the day-by-day
+        // line.
+        for bt in &pair_bts {
+            equity_curve_entries.push(EquityCurveEntry {
+                pair: format!("{} / {}", a, b),
+                threshold: bt.threshold,
+                sharpe: bt.sharpe_ratio,
+                sortino: bt.sortino_ratio,
+                half_life_bars: bt.half_life_bars,
+                max_drawdown: bt.max_drawdown,
+                net_pnl: bt.total_pnl,
+                volatility: bt.volatility,
+                trades: bt.trades,
+                dates: hist_dates.clone(),
+                equity: bt.equity_curve.clone(),
+            });
+        }
+
         chart_groups.push((format!("{} / {}", a, b), pair_charts));
         results.extend(pair_bts);
     }
@@ -417,6 +445,14 @@ async fn main() -> Result<()> {
     std::io::stdout().flush().ok();
     export_backtests("output/backtests_energy.csv", &results)?;
     println!("Exported {} backtests to output/backtests_energy.csv", results.len());
+
+    // 11. Export full equity curves as JSON, ordered to match the ranking
+    // table (best Sharpe first), for interactive/dynamic charts.
+    equity_curve_entries.sort_by(|a, b| {
+        b.sharpe.partial_cmp(&a.sharpe).unwrap_or(std::cmp::Ordering::Equal)
+    });
+    export_equity_curves("output/equity_curves.json", &equity_curve_entries)?;
+    println!("Exported {} equity curves to output/equity_curves.json", equity_curve_entries.len());
 
     Ok(())
 }
