@@ -26,6 +26,17 @@ cargo run --release
 
 Requires network access to fetch price data from Yahoo Finance. Output is written to `output/`.
 
+## Streamlit dashboard
+
+An interactive alternative to `output/dashboard.html`: sortable/filterable ranking table, KPI cards, CSV download, and each pair's charts grouped side by side in a collapsible row (best pair first, expanded by default for the top 3).
+
+```bash
+pip install -r dashboard/requirements.txt
+streamlit run dashboard/streamlit_app.py
+```
+
+It reads directly from `output/` (run `cargo run --release` first), or use the **Regenerate data** button in the sidebar to re-run the Rust pipeline from within the app (requires `cargo` on PATH and network access).
+
 ## Results (snapshot)
 
 Yahoo Finance data is live, so results shift run to run — this table is from one run on 2026-09-11, included for reference. Full ranking in `output/backtests_energy.csv`.
@@ -73,6 +84,7 @@ src/
   model/     OLS, ADF/cointegration, spread & z-score, forecasting
   engine/    signal generation, backtesting
   universe/  ticker universe, correlation/cointegration scan, plotting, HTML export
+dashboard/   Streamlit app that reads output/ and renders it interactively
 ```
 
 ## Assumptions & limitations
