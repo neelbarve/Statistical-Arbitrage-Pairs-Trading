@@ -24,9 +24,13 @@ use super::signals::Signal;
 #[derive(Debug, Clone)]
 pub struct BacktestResult {
     pub pair: (String, String),
+    pub threshold: f64,     // NEW: entry z-score threshold (e.g. 1.5 or 2.0) this result belongs to
     pub total_pnl: f64,
     pub total_costs: f64,   // NEW: reported separately so gross vs net PnL is always visible
     pub trades: usize,
+    pub equity_curve: Vec<f64>,  // NEW: cumulative net PnL at each bar, for equity-curve plots
+    pub max_drawdown: f64,       // NEW: largest peak-to-trough drop in the equity curve
+    pub sharpe_ratio: f64,       // NEW: annualized Sharpe ratio of per-bar equity changes
 }
 
 pub fn backtest_pair(
@@ -41,6 +45,8 @@ pub fn backtest_pair(
     let mut total_costs = 0.0;
     let mut trades = 0usize;
     let mut prev_sig = Signal::Flat;
+    let mut equity_curve = Vec::with_capacity(n.max(1));
+    equity_curve.push(0.0);
 
     for i in 1..n {
         let sig = signals[i];
@@ -51,12 +57,13 @@ pub fn backtest_pair(
         let dx = x[i] - x[i - 1];
         let dy = y[i] - y[i - 1];
 
+        let mut step_pnl = 0.0;
         match sig {
             Signal::LongSpread => {
-                pnl += notional * (dx - dy);
+                step_pnl += notional * (dx - dy);
             }
             Signal::ShortSpread => {
-                pnl += notional * (-dx + dy);
+                step_pnl += notional * (-dx + dy);
             }
             Signal::Flat => {}
         }
@@ -73,23 +80,67 @@ pub fn backtest_pair(
             (Signal::ShortSpread, Signal::ShortSpread) => false,
             _ => true,
         };
+        let mut step_cost = 0.0;
         if position_changed {
             // 2 legs (x and y), cost proportional to notional value traded
             // on each leg.
-            total_costs += 2.0 * notional * cost_bps;
+            step_cost = 2.0 * notional * cost_bps;
+            total_costs += step_cost;
         }
+
+        pnl += step_pnl - step_cost;
+        equity_curve.push(pnl);
 
         prev_sig = sig;
     }
 
-    pnl -= total_costs;
+    let max_drawdown = max_drawdown(&equity_curve);
+    let sharpe_ratio = sharpe_ratio(&equity_curve);
 
     BacktestResult {
         pair: ("".into(), "".into()),
+        threshold: 0.0,
         total_pnl: pnl,
         total_costs,
         trades,
+        equity_curve,
+        max_drawdown,
+        sharpe_ratio,
     }
+}
+
+// Largest peak-to-trough decline in the equity curve (in the same dollar
+// units as total_pnl). Always >= 0.0.
+fn max_drawdown(equity: &[f64]) -> f64 {
+    let mut peak = f64::NEG_INFINITY;
+    let mut worst = 0.0;
+    for &e in equity {
+        if e > peak {
+            peak = e;
+        }
+        let dd = peak - e;
+        if dd > worst {
+            worst = dd;
+        }
+    }
+    worst
+}
+
+// Annualized Sharpe ratio computed from bar-over-bar equity changes,
+// assuming ~252 trading bars per year. Returns 0.0 when there is not
+// enough data or no variance (flat equity curve) to avoid division by zero.
+fn sharpe_ratio(equity: &[f64]) -> f64 {
+    if equity.len() < 3 {
+        return 0.0;
+    }
+    let returns: Vec<f64> = equity.windows(2).map(|w| w[1] - w[0]).collect();
+    let mean = returns.iter().sum::<f64>() / returns.len() as f64;
+    let var = returns.iter().map(|r| (r - mean).powi(2)).sum::<f64>() / returns.len() as f64;
+    let sd = var.sqrt();
+    if sd <= 1e-12 {
+        return 0.0;
+    }
+    (mean / sd) * (252.0_f64).sqrt()
 }
 
 #[cfg(test)]

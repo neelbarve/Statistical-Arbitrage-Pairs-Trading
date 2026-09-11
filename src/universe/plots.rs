@@ -180,6 +180,20 @@ pub fn plot_signals_with_forecast_svg(
         .x_label_formatter(&|d| d.format("%Y-%m-%d").to_string())
         .draw()?;
 
+    // --- Entry threshold reference bands: 1.5 SD (dotted) and 2.0 SD (dashed) ---
+    let x0 = hist_dates[0];
+    let x1 = forecast_dates[forecast_dates.len() - 1];
+    for &level in &[1.5, -1.5, 2.0, -2.0] {
+        chart.draw_series(std::iter::once(PathElement::new(
+            vec![(x0, level), (x1, level)],
+            ShapeStyle {
+                color: RGBColor(150, 150, 150).mix(0.6),
+                filled: false,
+                stroke_width: 1,
+            },
+        )))?;
+    }
+
     // --- Historical z-score (blue) ---
     chart.draw_series(LineSeries::new(
         hist_dates.iter().zip(hist_z.iter()).map(|(d, z)| (*d, *z)),
@@ -547,6 +561,75 @@ pub fn plot_prices_with_signals_svg(
     Ok(())
 }
 
+
+// Equity curve comparison for the two entry thresholds (1.5 SD vs 2.0 SD)
+// backtested on the same pair, so the two strategies can be compared at a
+// glance alongside their Sharpe ratio / max drawdown.
+pub fn plot_equity_curves_svg(
+    path: &str,
+    title: &str,
+    dates: &[NaiveDate],
+    equity_a: &[f64],
+    label_a: &str,
+    equity_b: &[f64],
+    label_b: &str,
+) -> anyhow::Result<()> {
+    let root = BitMapBackend::new(path, (900, 500)).into_drawing_area();
+    root.fill(&WHITE)?;
+
+    let n = dates.len().min(equity_a.len()).min(equity_b.len());
+
+    let min_y = equity_a[..n]
+        .iter()
+        .chain(&equity_b[..n])
+        .cloned()
+        .fold(0.0_f64, f64::min);
+    let max_y = equity_a[..n]
+        .iter()
+        .chain(&equity_b[..n])
+        .cloned()
+        .fold(0.0_f64, f64::max);
+    // Pad the range slightly so a flat line isn't drawn on the axis edge.
+    let pad = ((max_y - min_y).abs() * 0.1).max(1e-6);
+
+    let mut chart = ChartBuilder::on(&root)
+        .caption(title, ("sans-serif", 24))
+        .margin(20)
+        .set_all_label_area_size(50)
+        .build_cartesian_2d(dates[0]..dates[n - 1], (min_y - pad)..(max_y + pad))?;
+
+    chart
+        .configure_mesh()
+        .x_labels(15)
+        .x_label_formatter(&|d| d.format("%Y-%m-%d").to_string())
+        .y_desc("Cumulative net PnL")
+        .draw()?;
+
+    chart
+        .draw_series(LineSeries::new(
+            dates[..n].iter().zip(equity_a[..n].iter()).map(|(d, e)| (*d, *e)),
+            &BLUE,
+        ))?
+        .label(label_a)
+        .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &BLUE));
+
+    chart
+        .draw_series(LineSeries::new(
+            dates[..n].iter().zip(equity_b[..n].iter()).map(|(d, e)| (*d, *e)),
+            &ORANGE,
+        ))?
+        .label(label_b)
+        .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &ORANGE));
+
+    chart
+        .configure_series_labels()
+        .background_style(&WHITE.mix(0.8))
+        .border_style(&BLACK)
+        .draw()?;
+
+    root.present()?;
+    Ok(())
+}
 
 // Plot side by side with signals, so we can visually verify that signals align with price movements as expected.
 // use plotters::prelude::*;
