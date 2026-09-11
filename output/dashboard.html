@@ -20,16 +20,19 @@
     .neg { color: #f87171; }
     .chart-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 18px; }
     .card { background: #10243b; border: 1px solid #23374f; border-radius: 16px; padding: 14px; box-shadow: 0 10px 24px rgba(0,0,0,.18); }
-    .card h2 { margin: 0 0 10px; font-size: 1.05rem; color: #f8fafc; }
+    .card h2, .card h3 { margin: 0 0 10px; font-size: 1.05rem; color: #f8fafc; }
     .card img { width: 100%; height: auto; border-radius: 12px; display: block; background: white; }
     .card .meta { margin-top: 8px; font-size: 0.9rem; color: #8ca0bc; }
+    .pair-group { margin-bottom: 30px; }
+    .pair-group h2 { margin: 0 0 12px; font-size: 1.25rem; color: #f8fafc; border-bottom: 1px solid #23374f; padding-bottom: 8px; }
+    .pair-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
   </style>
 </head>
 <body>
   <div class="page">
     <section class="hero">
       <h1>Signal and price dashboard</h1>
-      <p>All generated charts from the current run are shown together for quick review.</p>
+      <p>Each pair's charts are grouped side by side below the ranking table, best pair first.</p>
     </section>
     <section>
       <h2>Pairs ranked best to trade (by Sharpe ratio)</h2>
@@ -37,13 +40,13 @@
       <table>
         <thead><tr><th>Rank</th><th>Pair</th><th>Entry SD</th><th>Risk-Free Rate</th><th>Volatility</th><th>Sharpe</th><th>Max Drawdown</th><th>Transaction Cost</th><th>Net PnL</th><th>Trades</th></tr></thead>
         <tbody>
-          <tr><td>1</td><td>EOG / XOM</td><td>1.5</td><td>4.00%</td><td>2.0702</td><td>0.607</td><td>2.5469</td><td>0.0384</td><td class="pos">17.9904</td><td>48</td></tr>
-          <tr><td>2</td><td>SLB / APA</td><td>1.5</td><td>4.00%</td><td>1.6044</td><td>0.312</td><td>6.2415</td><td>0.0432</td><td class="pos">7.5019</td><td>54</td></tr>
-          <tr><td>3</td><td>DVN / FANG</td><td>1.5</td><td>4.00%</td><td>3.0500</td><td>0.258</td><td>10.1833</td><td>0.0376</td><td class="pos">11.4826</td><td>47</td></tr>
-          <tr><td>4</td><td>COP / FANG</td><td>1.5</td><td>4.00%</td><td>2.3203</td><td>0.181</td><td>4.2960</td><td>0.0432</td><td class="pos">6.3728</td><td>54</td></tr>
-          <tr><td>5</td><td>EOG / FANG</td><td>1.5</td><td>4.00%</td><td>2.6668</td><td>0.177</td><td>7.4005</td><td>0.0384</td><td class="pos">7.1204</td><td>48</td></tr>
-          <tr><td>6</td><td>HAL / APA</td><td>1.5</td><td>4.00%</td><td>1.2287</td><td>0.091</td><td>2.9024</td><td>0.0472</td><td class="pos">2.1023</td><td>59</td></tr>
-          <tr><td>7</td><td>XOM / FANG</td><td>1.5</td><td>4.00%</td><td>1.5372</td><td>0.088</td><td>4.1831</td><td>0.0288</td><td class="pos">2.4311</td><td>36</td></tr>
+          <tr><td>1</td><td>EOG / XOM</td><td>1.5</td><td>4.00%</td><td>2.0702</td><td>0.607</td><td>2.5469</td><td>0.0384</td><td class="pos">17.9906</td><td>48</td></tr>
+          <tr><td>2</td><td>SLB / APA</td><td>1.5</td><td>4.00%</td><td>1.6044</td><td>0.312</td><td>6.2414</td><td>0.0432</td><td class="pos">7.5018</td><td>54</td></tr>
+          <tr><td>3</td><td>DVN / FANG</td><td>1.5</td><td>4.00%</td><td>3.0500</td><td>0.258</td><td>10.1833</td><td>0.0376</td><td class="pos">11.4829</td><td>47</td></tr>
+          <tr><td>4</td><td>COP / FANG</td><td>1.5</td><td>4.00%</td><td>2.3203</td><td>0.181</td><td>4.2963</td><td>0.0432</td><td class="pos">6.3726</td><td>54</td></tr>
+          <tr><td>5</td><td>EOG / FANG</td><td>1.5</td><td>4.00%</td><td>2.6668</td><td>0.177</td><td>7.4006</td><td>0.0384</td><td class="pos">7.1200</td><td>48</td></tr>
+          <tr><td>6</td><td>HAL / APA</td><td>1.5</td><td>4.00%</td><td>1.2287</td><td>0.091</td><td>2.9023</td><td>0.0472</td><td class="pos">2.1023</td><td>59</td></tr>
+          <tr><td>7</td><td>XOM / FANG</td><td>1.5</td><td>4.00%</td><td>1.5372</td><td>0.088</td><td>4.1832</td><td>0.0288</td><td class="pos">2.4308</td><td>36</td></tr>
           <tr><td>8</td><td>COP / FANG</td><td>2.0</td><td>4.00%</td><td>0.0000</td><td>0.000</td><td>0.0000</td><td>0.0000</td><td class="pos">0.0000</td><td>0</td></tr>
           <tr><td>9</td><td>EOG / XOM</td><td>2.0</td><td>4.00%</td><td>0.0000</td><td>0.000</td><td>0.0000</td><td>0.0000</td><td class="pos">0.0000</td><td>0</td></tr>
           <tr><td>10</td><td>EOG / FANG</td><td>2.0</td><td>4.00%</td><td>0.0000</td><td>0.000</td><td>0.0000</td><td>0.0000</td><td class="pos">0.0000</td><td>0</td></tr>
@@ -56,316 +59,376 @@
           <tr><td>17</td><td>PSX / VLO</td><td>2.0</td><td>4.00%</td><td>0.0000</td><td>0.000</td><td>0.0000</td><td>0.0000</td><td class="pos">0.0000</td><td>0</td></tr>
           <tr><td>18</td><td>HAL / APA</td><td>2.0</td><td>4.00%</td><td>0.0000</td><td>0.000</td><td>0.0000</td><td>0.0000</td><td class="pos">0.0000</td><td>0</td></tr>
           <tr><td>19</td><td>DVN / FANG</td><td>2.0</td><td>4.00%</td><td>0.0000</td><td>0.000</td><td>0.0000</td><td>0.0000</td><td class="pos">0.0000</td><td>0</td></tr>
-          <tr><td>20</td><td>CVX / FANG</td><td>1.5</td><td>4.00%</td><td>4.1806</td><td>-0.047</td><td>18.8278</td><td>0.0472</td><td class="neg">-2.1980</td><td>59</td></tr>
-          <tr><td>21</td><td>CVX / MPC</td><td>1.5</td><td>4.00%</td><td>4.3308</td><td>-0.119</td><td>19.8911</td><td>0.0384</td><td class="neg">-6.5847</td><td>48</td></tr>
-          <tr><td>22</td><td>MPC / PSX</td><td>1.5</td><td>4.00%</td><td>2.0801</td><td>-0.177</td><td>8.8869</td><td>0.0376</td><td class="neg">-4.5466</td><td>47</td></tr>
-          <tr><td>23</td><td>PSX / VLO</td><td>1.5</td><td>4.00%</td><td>2.5979</td><td>-0.243</td><td>11.9832</td><td>0.0368</td><td class="neg">-8.2136</td><td>46</td></tr>
-          <tr><td>24</td><td>SLB / HAL</td><td>1.5</td><td>4.00%</td><td>1.0698</td><td>-0.610</td><td>9.4672</td><td>0.0464</td><td class="neg">-8.4930</td><td>58</td></tr>
+          <tr><td>20</td><td>CVX / FANG</td><td>1.5</td><td>4.00%</td><td>4.1806</td><td>-0.047</td><td>18.8277</td><td>0.0472</td><td class="neg">-2.1976</td><td>59</td></tr>
+          <tr><td>21</td><td>CVX / MPC</td><td>1.5</td><td>4.00%</td><td>4.3308</td><td>-0.119</td><td>19.8911</td><td>0.0384</td><td class="neg">-6.5850</td><td>48</td></tr>
+          <tr><td>22</td><td>MPC / PSX</td><td>1.5</td><td>4.00%</td><td>2.0801</td><td>-0.177</td><td>8.8872</td><td>0.0376</td><td class="neg">-4.5468</td><td>47</td></tr>
+          <tr><td>23</td><td>PSX / VLO</td><td>1.5</td><td>4.00%</td><td>2.5979</td><td>-0.243</td><td>11.9832</td><td>0.0368</td><td class="neg">-8.2134</td><td>46</td></tr>
+          <tr><td>24</td><td>SLB / HAL</td><td>1.5</td><td>4.00%</td><td>1.0698</td><td>-0.610</td><td>9.4672</td><td>0.0464</td><td class="neg">-8.4929</td><td>58</td></tr>
         </tbody>
       </table>
       </div>
     </section>
-    <section class="chart-grid">
-      <article class="card">
-        <h2>COP FANG 1 5sd signals</h2>
-        <img src="COP_FANG_1_5sd_signals.png" alt="COP FANG 1 5sd signals">
-        <div class="meta">COP_FANG_1_5sd_signals.png</div>
-      </article>
-      <article class="card">
-        <h2>COP FANG 1 5sd prices</h2>
-        <img src="COP_FANG_1_5sd_prices.png" alt="COP FANG 1 5sd prices">
-        <div class="meta">COP_FANG_1_5sd_prices.png</div>
-      </article>
-      <article class="card">
-        <h2>COP FANG 2sd signals</h2>
-        <img src="COP_FANG_2sd_signals.png" alt="COP FANG 2sd signals">
-        <div class="meta">COP_FANG_2sd_signals.png</div>
-      </article>
-      <article class="card">
-        <h2>COP FANG 2sd prices</h2>
-        <img src="COP_FANG_2sd_prices.png" alt="COP FANG 2sd prices">
-        <div class="meta">COP_FANG_2sd_prices.png</div>
-      </article>
-      <article class="card">
-        <h2>COP FANG equity</h2>
-        <img src="COP_FANG_equity.png" alt="COP FANG equity">
-        <div class="meta">COP_FANG_equity.png</div>
-      </article>
-      <article class="card">
-        <h2>EOG XOM 1 5sd signals</h2>
-        <img src="EOG_XOM_1_5sd_signals.png" alt="EOG XOM 1 5sd signals">
-        <div class="meta">EOG_XOM_1_5sd_signals.png</div>
-      </article>
-      <article class="card">
-        <h2>EOG XOM 1 5sd prices</h2>
-        <img src="EOG_XOM_1_5sd_prices.png" alt="EOG XOM 1 5sd prices">
-        <div class="meta">EOG_XOM_1_5sd_prices.png</div>
-      </article>
-      <article class="card">
-        <h2>EOG XOM 2sd signals</h2>
-        <img src="EOG_XOM_2sd_signals.png" alt="EOG XOM 2sd signals">
-        <div class="meta">EOG_XOM_2sd_signals.png</div>
-      </article>
-      <article class="card">
-        <h2>EOG XOM 2sd prices</h2>
-        <img src="EOG_XOM_2sd_prices.png" alt="EOG XOM 2sd prices">
-        <div class="meta">EOG_XOM_2sd_prices.png</div>
-      </article>
-      <article class="card">
-        <h2>EOG XOM equity</h2>
-        <img src="EOG_XOM_equity.png" alt="EOG XOM equity">
-        <div class="meta">EOG_XOM_equity.png</div>
-      </article>
-      <article class="card">
-        <h2>EOG FANG 1 5sd signals</h2>
-        <img src="EOG_FANG_1_5sd_signals.png" alt="EOG FANG 1 5sd signals">
-        <div class="meta">EOG_FANG_1_5sd_signals.png</div>
-      </article>
-      <article class="card">
-        <h2>EOG FANG 1 5sd prices</h2>
-        <img src="EOG_FANG_1_5sd_prices.png" alt="EOG FANG 1 5sd prices">
-        <div class="meta">EOG_FANG_1_5sd_prices.png</div>
-      </article>
-      <article class="card">
-        <h2>EOG FANG 2sd signals</h2>
-        <img src="EOG_FANG_2sd_signals.png" alt="EOG FANG 2sd signals">
-        <div class="meta">EOG_FANG_2sd_signals.png</div>
-      </article>
-      <article class="card">
-        <h2>EOG FANG 2sd prices</h2>
-        <img src="EOG_FANG_2sd_prices.png" alt="EOG FANG 2sd prices">
-        <div class="meta">EOG_FANG_2sd_prices.png</div>
-      </article>
-      <article class="card">
-        <h2>EOG FANG equity</h2>
-        <img src="EOG_FANG_equity.png" alt="EOG FANG equity">
-        <div class="meta">EOG_FANG_equity.png</div>
-      </article>
-      <article class="card">
-        <h2>XOM FANG 1 5sd signals</h2>
-        <img src="XOM_FANG_1_5sd_signals.png" alt="XOM FANG 1 5sd signals">
-        <div class="meta">XOM_FANG_1_5sd_signals.png</div>
-      </article>
-      <article class="card">
-        <h2>XOM FANG 1 5sd prices</h2>
-        <img src="XOM_FANG_1_5sd_prices.png" alt="XOM FANG 1 5sd prices">
-        <div class="meta">XOM_FANG_1_5sd_prices.png</div>
-      </article>
-      <article class="card">
-        <h2>XOM FANG 2sd signals</h2>
-        <img src="XOM_FANG_2sd_signals.png" alt="XOM FANG 2sd signals">
-        <div class="meta">XOM_FANG_2sd_signals.png</div>
-      </article>
-      <article class="card">
-        <h2>XOM FANG 2sd prices</h2>
-        <img src="XOM_FANG_2sd_prices.png" alt="XOM FANG 2sd prices">
-        <div class="meta">XOM_FANG_2sd_prices.png</div>
-      </article>
-      <article class="card">
-        <h2>XOM FANG equity</h2>
-        <img src="XOM_FANG_equity.png" alt="XOM FANG equity">
-        <div class="meta">XOM_FANG_equity.png</div>
-      </article>
-      <article class="card">
-        <h2>CVX MPC 1 5sd signals</h2>
-        <img src="CVX_MPC_1_5sd_signals.png" alt="CVX MPC 1 5sd signals">
-        <div class="meta">CVX_MPC_1_5sd_signals.png</div>
-      </article>
-      <article class="card">
-        <h2>CVX MPC 1 5sd prices</h2>
-        <img src="CVX_MPC_1_5sd_prices.png" alt="CVX MPC 1 5sd prices">
-        <div class="meta">CVX_MPC_1_5sd_prices.png</div>
-      </article>
-      <article class="card">
-        <h2>CVX MPC 2sd signals</h2>
-        <img src="CVX_MPC_2sd_signals.png" alt="CVX MPC 2sd signals">
-        <div class="meta">CVX_MPC_2sd_signals.png</div>
-      </article>
-      <article class="card">
-        <h2>CVX MPC 2sd prices</h2>
-        <img src="CVX_MPC_2sd_prices.png" alt="CVX MPC 2sd prices">
-        <div class="meta">CVX_MPC_2sd_prices.png</div>
-      </article>
-      <article class="card">
-        <h2>CVX MPC equity</h2>
-        <img src="CVX_MPC_equity.png" alt="CVX MPC equity">
-        <div class="meta">CVX_MPC_equity.png</div>
-      </article>
-      <article class="card">
-        <h2>CVX FANG 1 5sd signals</h2>
-        <img src="CVX_FANG_1_5sd_signals.png" alt="CVX FANG 1 5sd signals">
-        <div class="meta">CVX_FANG_1_5sd_signals.png</div>
-      </article>
-      <article class="card">
-        <h2>CVX FANG 1 5sd prices</h2>
-        <img src="CVX_FANG_1_5sd_prices.png" alt="CVX FANG 1 5sd prices">
-        <div class="meta">CVX_FANG_1_5sd_prices.png</div>
-      </article>
-      <article class="card">
-        <h2>CVX FANG 2sd signals</h2>
-        <img src="CVX_FANG_2sd_signals.png" alt="CVX FANG 2sd signals">
-        <div class="meta">CVX_FANG_2sd_signals.png</div>
-      </article>
-      <article class="card">
-        <h2>CVX FANG 2sd prices</h2>
-        <img src="CVX_FANG_2sd_prices.png" alt="CVX FANG 2sd prices">
-        <div class="meta">CVX_FANG_2sd_prices.png</div>
-      </article>
-      <article class="card">
-        <h2>CVX FANG equity</h2>
-        <img src="CVX_FANG_equity.png" alt="CVX FANG equity">
-        <div class="meta">CVX_FANG_equity.png</div>
-      </article>
-      <article class="card">
-        <h2>SLB HAL 1 5sd signals</h2>
-        <img src="SLB_HAL_1_5sd_signals.png" alt="SLB HAL 1 5sd signals">
-        <div class="meta">SLB_HAL_1_5sd_signals.png</div>
-      </article>
-      <article class="card">
-        <h2>SLB HAL 1 5sd prices</h2>
-        <img src="SLB_HAL_1_5sd_prices.png" alt="SLB HAL 1 5sd prices">
-        <div class="meta">SLB_HAL_1_5sd_prices.png</div>
-      </article>
-      <article class="card">
-        <h2>SLB HAL 2sd signals</h2>
-        <img src="SLB_HAL_2sd_signals.png" alt="SLB HAL 2sd signals">
-        <div class="meta">SLB_HAL_2sd_signals.png</div>
-      </article>
-      <article class="card">
-        <h2>SLB HAL 2sd prices</h2>
-        <img src="SLB_HAL_2sd_prices.png" alt="SLB HAL 2sd prices">
-        <div class="meta">SLB_HAL_2sd_prices.png</div>
-      </article>
-      <article class="card">
-        <h2>SLB HAL equity</h2>
-        <img src="SLB_HAL_equity.png" alt="SLB HAL equity">
-        <div class="meta">SLB_HAL_equity.png</div>
-      </article>
-      <article class="card">
-        <h2>SLB APA 1 5sd signals</h2>
-        <img src="SLB_APA_1_5sd_signals.png" alt="SLB APA 1 5sd signals">
-        <div class="meta">SLB_APA_1_5sd_signals.png</div>
-      </article>
-      <article class="card">
-        <h2>SLB APA 1 5sd prices</h2>
-        <img src="SLB_APA_1_5sd_prices.png" alt="SLB APA 1 5sd prices">
-        <div class="meta">SLB_APA_1_5sd_prices.png</div>
-      </article>
-      <article class="card">
-        <h2>SLB APA 2sd signals</h2>
-        <img src="SLB_APA_2sd_signals.png" alt="SLB APA 2sd signals">
-        <div class="meta">SLB_APA_2sd_signals.png</div>
-      </article>
-      <article class="card">
-        <h2>SLB APA 2sd prices</h2>
-        <img src="SLB_APA_2sd_prices.png" alt="SLB APA 2sd prices">
-        <div class="meta">SLB_APA_2sd_prices.png</div>
-      </article>
-      <article class="card">
-        <h2>SLB APA equity</h2>
-        <img src="SLB_APA_equity.png" alt="SLB APA equity">
-        <div class="meta">SLB_APA_equity.png</div>
-      </article>
-      <article class="card">
-        <h2>MPC PSX 1 5sd signals</h2>
-        <img src="MPC_PSX_1_5sd_signals.png" alt="MPC PSX 1 5sd signals">
-        <div class="meta">MPC_PSX_1_5sd_signals.png</div>
-      </article>
-      <article class="card">
-        <h2>MPC PSX 1 5sd prices</h2>
-        <img src="MPC_PSX_1_5sd_prices.png" alt="MPC PSX 1 5sd prices">
-        <div class="meta">MPC_PSX_1_5sd_prices.png</div>
-      </article>
-      <article class="card">
-        <h2>MPC PSX 2sd signals</h2>
-        <img src="MPC_PSX_2sd_signals.png" alt="MPC PSX 2sd signals">
-        <div class="meta">MPC_PSX_2sd_signals.png</div>
-      </article>
-      <article class="card">
-        <h2>MPC PSX 2sd prices</h2>
-        <img src="MPC_PSX_2sd_prices.png" alt="MPC PSX 2sd prices">
-        <div class="meta">MPC_PSX_2sd_prices.png</div>
-      </article>
-      <article class="card">
-        <h2>MPC PSX equity</h2>
-        <img src="MPC_PSX_equity.png" alt="MPC PSX equity">
-        <div class="meta">MPC_PSX_equity.png</div>
-      </article>
-      <article class="card">
-        <h2>PSX VLO 1 5sd signals</h2>
-        <img src="PSX_VLO_1_5sd_signals.png" alt="PSX VLO 1 5sd signals">
-        <div class="meta">PSX_VLO_1_5sd_signals.png</div>
-      </article>
-      <article class="card">
-        <h2>PSX VLO 1 5sd prices</h2>
-        <img src="PSX_VLO_1_5sd_prices.png" alt="PSX VLO 1 5sd prices">
-        <div class="meta">PSX_VLO_1_5sd_prices.png</div>
-      </article>
-      <article class="card">
-        <h2>PSX VLO 2sd signals</h2>
-        <img src="PSX_VLO_2sd_signals.png" alt="PSX VLO 2sd signals">
-        <div class="meta">PSX_VLO_2sd_signals.png</div>
-      </article>
-      <article class="card">
-        <h2>PSX VLO 2sd prices</h2>
-        <img src="PSX_VLO_2sd_prices.png" alt="PSX VLO 2sd prices">
-        <div class="meta">PSX_VLO_2sd_prices.png</div>
-      </article>
-      <article class="card">
-        <h2>PSX VLO equity</h2>
-        <img src="PSX_VLO_equity.png" alt="PSX VLO equity">
-        <div class="meta">PSX_VLO_equity.png</div>
-      </article>
-      <article class="card">
-        <h2>HAL APA 1 5sd signals</h2>
-        <img src="HAL_APA_1_5sd_signals.png" alt="HAL APA 1 5sd signals">
-        <div class="meta">HAL_APA_1_5sd_signals.png</div>
-      </article>
-      <article class="card">
-        <h2>HAL APA 1 5sd prices</h2>
-        <img src="HAL_APA_1_5sd_prices.png" alt="HAL APA 1 5sd prices">
-        <div class="meta">HAL_APA_1_5sd_prices.png</div>
-      </article>
-      <article class="card">
-        <h2>HAL APA 2sd signals</h2>
-        <img src="HAL_APA_2sd_signals.png" alt="HAL APA 2sd signals">
-        <div class="meta">HAL_APA_2sd_signals.png</div>
-      </article>
-      <article class="card">
-        <h2>HAL APA 2sd prices</h2>
-        <img src="HAL_APA_2sd_prices.png" alt="HAL APA 2sd prices">
-        <div class="meta">HAL_APA_2sd_prices.png</div>
-      </article>
-      <article class="card">
-        <h2>HAL APA equity</h2>
-        <img src="HAL_APA_equity.png" alt="HAL APA equity">
-        <div class="meta">HAL_APA_equity.png</div>
-      </article>
-      <article class="card">
-        <h2>DVN FANG 1 5sd signals</h2>
-        <img src="DVN_FANG_1_5sd_signals.png" alt="DVN FANG 1 5sd signals">
-        <div class="meta">DVN_FANG_1_5sd_signals.png</div>
-      </article>
-      <article class="card">
-        <h2>DVN FANG 1 5sd prices</h2>
-        <img src="DVN_FANG_1_5sd_prices.png" alt="DVN FANG 1 5sd prices">
-        <div class="meta">DVN_FANG_1_5sd_prices.png</div>
-      </article>
-      <article class="card">
-        <h2>DVN FANG 2sd signals</h2>
-        <img src="DVN_FANG_2sd_signals.png" alt="DVN FANG 2sd signals">
-        <div class="meta">DVN_FANG_2sd_signals.png</div>
-      </article>
-      <article class="card">
-        <h2>DVN FANG 2sd prices</h2>
-        <img src="DVN_FANG_2sd_prices.png" alt="DVN FANG 2sd prices">
-        <div class="meta">DVN_FANG_2sd_prices.png</div>
-      </article>
-      <article class="card">
-        <h2>DVN FANG equity</h2>
-        <img src="DVN_FANG_equity.png" alt="DVN FANG equity">
-        <div class="meta">DVN_FANG_equity.png</div>
-      </article>
+    <section>
+      <div class="pair-group">
+        <h2>EOG / XOM</h2>
+        <div class="pair-row">
+          <article class="card">
+            <h3>1.5 SD Signals</h3>
+            <img src="EOG_XOM_1_5sd_signals.png" alt="EOG / XOM 1.5 SD Signals">
+            <div class="meta">EOG_XOM_1_5sd_signals.png</div>
+          </article>
+          <article class="card">
+            <h3>1.5 SD Prices</h3>
+            <img src="EOG_XOM_1_5sd_prices.png" alt="EOG / XOM 1.5 SD Prices">
+            <div class="meta">EOG_XOM_1_5sd_prices.png</div>
+          </article>
+          <article class="card">
+            <h3>2 SD Signals</h3>
+            <img src="EOG_XOM_2sd_signals.png" alt="EOG / XOM 2 SD Signals">
+            <div class="meta">EOG_XOM_2sd_signals.png</div>
+          </article>
+          <article class="card">
+            <h3>2 SD Prices</h3>
+            <img src="EOG_XOM_2sd_prices.png" alt="EOG / XOM 2 SD Prices">
+            <div class="meta">EOG_XOM_2sd_prices.png</div>
+          </article>
+          <article class="card">
+            <h3>Equity Curve</h3>
+            <img src="EOG_XOM_equity.png" alt="EOG / XOM Equity Curve">
+            <div class="meta">EOG_XOM_equity.png</div>
+          </article>
+        </div>
+      </div>
+      <div class="pair-group">
+        <h2>SLB / APA</h2>
+        <div class="pair-row">
+          <article class="card">
+            <h3>1.5 SD Signals</h3>
+            <img src="SLB_APA_1_5sd_signals.png" alt="SLB / APA 1.5 SD Signals">
+            <div class="meta">SLB_APA_1_5sd_signals.png</div>
+          </article>
+          <article class="card">
+            <h3>1.5 SD Prices</h3>
+            <img src="SLB_APA_1_5sd_prices.png" alt="SLB / APA 1.5 SD Prices">
+            <div class="meta">SLB_APA_1_5sd_prices.png</div>
+          </article>
+          <article class="card">
+            <h3>2 SD Signals</h3>
+            <img src="SLB_APA_2sd_signals.png" alt="SLB / APA 2 SD Signals">
+            <div class="meta">SLB_APA_2sd_signals.png</div>
+          </article>
+          <article class="card">
+            <h3>2 SD Prices</h3>
+            <img src="SLB_APA_2sd_prices.png" alt="SLB / APA 2 SD Prices">
+            <div class="meta">SLB_APA_2sd_prices.png</div>
+          </article>
+          <article class="card">
+            <h3>Equity Curve</h3>
+            <img src="SLB_APA_equity.png" alt="SLB / APA Equity Curve">
+            <div class="meta">SLB_APA_equity.png</div>
+          </article>
+        </div>
+      </div>
+      <div class="pair-group">
+        <h2>DVN / FANG</h2>
+        <div class="pair-row">
+          <article class="card">
+            <h3>1.5 SD Signals</h3>
+            <img src="DVN_FANG_1_5sd_signals.png" alt="DVN / FANG 1.5 SD Signals">
+            <div class="meta">DVN_FANG_1_5sd_signals.png</div>
+          </article>
+          <article class="card">
+            <h3>1.5 SD Prices</h3>
+            <img src="DVN_FANG_1_5sd_prices.png" alt="DVN / FANG 1.5 SD Prices">
+            <div class="meta">DVN_FANG_1_5sd_prices.png</div>
+          </article>
+          <article class="card">
+            <h3>2 SD Signals</h3>
+            <img src="DVN_FANG_2sd_signals.png" alt="DVN / FANG 2 SD Signals">
+            <div class="meta">DVN_FANG_2sd_signals.png</div>
+          </article>
+          <article class="card">
+            <h3>2 SD Prices</h3>
+            <img src="DVN_FANG_2sd_prices.png" alt="DVN / FANG 2 SD Prices">
+            <div class="meta">DVN_FANG_2sd_prices.png</div>
+          </article>
+          <article class="card">
+            <h3>Equity Curve</h3>
+            <img src="DVN_FANG_equity.png" alt="DVN / FANG Equity Curve">
+            <div class="meta">DVN_FANG_equity.png</div>
+          </article>
+        </div>
+      </div>
+      <div class="pair-group">
+        <h2>COP / FANG</h2>
+        <div class="pair-row">
+          <article class="card">
+            <h3>1.5 SD Signals</h3>
+            <img src="COP_FANG_1_5sd_signals.png" alt="COP / FANG 1.5 SD Signals">
+            <div class="meta">COP_FANG_1_5sd_signals.png</div>
+          </article>
+          <article class="card">
+            <h3>1.5 SD Prices</h3>
+            <img src="COP_FANG_1_5sd_prices.png" alt="COP / FANG 1.5 SD Prices">
+            <div class="meta">COP_FANG_1_5sd_prices.png</div>
+          </article>
+          <article class="card">
+            <h3>2 SD Signals</h3>
+            <img src="COP_FANG_2sd_signals.png" alt="COP / FANG 2 SD Signals">
+            <div class="meta">COP_FANG_2sd_signals.png</div>
+          </article>
+          <article class="card">
+            <h3>2 SD Prices</h3>
+            <img src="COP_FANG_2sd_prices.png" alt="COP / FANG 2 SD Prices">
+            <div class="meta">COP_FANG_2sd_prices.png</div>
+          </article>
+          <article class="card">
+            <h3>Equity Curve</h3>
+            <img src="COP_FANG_equity.png" alt="COP / FANG Equity Curve">
+            <div class="meta">COP_FANG_equity.png</div>
+          </article>
+        </div>
+      </div>
+      <div class="pair-group">
+        <h2>EOG / FANG</h2>
+        <div class="pair-row">
+          <article class="card">
+            <h3>1.5 SD Signals</h3>
+            <img src="EOG_FANG_1_5sd_signals.png" alt="EOG / FANG 1.5 SD Signals">
+            <div class="meta">EOG_FANG_1_5sd_signals.png</div>
+          </article>
+          <article class="card">
+            <h3>1.5 SD Prices</h3>
+            <img src="EOG_FANG_1_5sd_prices.png" alt="EOG / FANG 1.5 SD Prices">
+            <div class="meta">EOG_FANG_1_5sd_prices.png</div>
+          </article>
+          <article class="card">
+            <h3>2 SD Signals</h3>
+            <img src="EOG_FANG_2sd_signals.png" alt="EOG / FANG 2 SD Signals">
+            <div class="meta">EOG_FANG_2sd_signals.png</div>
+          </article>
+          <article class="card">
+            <h3>2 SD Prices</h3>
+            <img src="EOG_FANG_2sd_prices.png" alt="EOG / FANG 2 SD Prices">
+            <div class="meta">EOG_FANG_2sd_prices.png</div>
+          </article>
+          <article class="card">
+            <h3>Equity Curve</h3>
+            <img src="EOG_FANG_equity.png" alt="EOG / FANG Equity Curve">
+            <div class="meta">EOG_FANG_equity.png</div>
+          </article>
+        </div>
+      </div>
+      <div class="pair-group">
+        <h2>HAL / APA</h2>
+        <div class="pair-row">
+          <article class="card">
+            <h3>1.5 SD Signals</h3>
+            <img src="HAL_APA_1_5sd_signals.png" alt="HAL / APA 1.5 SD Signals">
+            <div class="meta">HAL_APA_1_5sd_signals.png</div>
+          </article>
+          <article class="card">
+            <h3>1.5 SD Prices</h3>
+            <img src="HAL_APA_1_5sd_prices.png" alt="HAL / APA 1.5 SD Prices">
+            <div class="meta">HAL_APA_1_5sd_prices.png</div>
+          </article>
+          <article class="card">
+            <h3>2 SD Signals</h3>
+            <img src="HAL_APA_2sd_signals.png" alt="HAL / APA 2 SD Signals">
+            <div class="meta">HAL_APA_2sd_signals.png</div>
+          </article>
+          <article class="card">
+            <h3>2 SD Prices</h3>
+            <img src="HAL_APA_2sd_prices.png" alt="HAL / APA 2 SD Prices">
+            <div class="meta">HAL_APA_2sd_prices.png</div>
+          </article>
+          <article class="card">
+            <h3>Equity Curve</h3>
+            <img src="HAL_APA_equity.png" alt="HAL / APA Equity Curve">
+            <div class="meta">HAL_APA_equity.png</div>
+          </article>
+        </div>
+      </div>
+      <div class="pair-group">
+        <h2>XOM / FANG</h2>
+        <div class="pair-row">
+          <article class="card">
+            <h3>1.5 SD Signals</h3>
+            <img src="XOM_FANG_1_5sd_signals.png" alt="XOM / FANG 1.5 SD Signals">
+            <div class="meta">XOM_FANG_1_5sd_signals.png</div>
+          </article>
+          <article class="card">
+            <h3>1.5 SD Prices</h3>
+            <img src="XOM_FANG_1_5sd_prices.png" alt="XOM / FANG 1.5 SD Prices">
+            <div class="meta">XOM_FANG_1_5sd_prices.png</div>
+          </article>
+          <article class="card">
+            <h3>2 SD Signals</h3>
+            <img src="XOM_FANG_2sd_signals.png" alt="XOM / FANG 2 SD Signals">
+            <div class="meta">XOM_FANG_2sd_signals.png</div>
+          </article>
+          <article class="card">
+            <h3>2 SD Prices</h3>
+            <img src="XOM_FANG_2sd_prices.png" alt="XOM / FANG 2 SD Prices">
+            <div class="meta">XOM_FANG_2sd_prices.png</div>
+          </article>
+          <article class="card">
+            <h3>Equity Curve</h3>
+            <img src="XOM_FANG_equity.png" alt="XOM / FANG Equity Curve">
+            <div class="meta">XOM_FANG_equity.png</div>
+          </article>
+        </div>
+      </div>
+      <div class="pair-group">
+        <h2>CVX / MPC</h2>
+        <div class="pair-row">
+          <article class="card">
+            <h3>1.5 SD Signals</h3>
+            <img src="CVX_MPC_1_5sd_signals.png" alt="CVX / MPC 1.5 SD Signals">
+            <div class="meta">CVX_MPC_1_5sd_signals.png</div>
+          </article>
+          <article class="card">
+            <h3>1.5 SD Prices</h3>
+            <img src="CVX_MPC_1_5sd_prices.png" alt="CVX / MPC 1.5 SD Prices">
+            <div class="meta">CVX_MPC_1_5sd_prices.png</div>
+          </article>
+          <article class="card">
+            <h3>2 SD Signals</h3>
+            <img src="CVX_MPC_2sd_signals.png" alt="CVX / MPC 2 SD Signals">
+            <div class="meta">CVX_MPC_2sd_signals.png</div>
+          </article>
+          <article class="card">
+            <h3>2 SD Prices</h3>
+            <img src="CVX_MPC_2sd_prices.png" alt="CVX / MPC 2 SD Prices">
+            <div class="meta">CVX_MPC_2sd_prices.png</div>
+          </article>
+          <article class="card">
+            <h3>Equity Curve</h3>
+            <img src="CVX_MPC_equity.png" alt="CVX / MPC Equity Curve">
+            <div class="meta">CVX_MPC_equity.png</div>
+          </article>
+        </div>
+      </div>
+      <div class="pair-group">
+        <h2>CVX / FANG</h2>
+        <div class="pair-row">
+          <article class="card">
+            <h3>1.5 SD Signals</h3>
+            <img src="CVX_FANG_1_5sd_signals.png" alt="CVX / FANG 1.5 SD Signals">
+            <div class="meta">CVX_FANG_1_5sd_signals.png</div>
+          </article>
+          <article class="card">
+            <h3>1.5 SD Prices</h3>
+            <img src="CVX_FANG_1_5sd_prices.png" alt="CVX / FANG 1.5 SD Prices">
+            <div class="meta">CVX_FANG_1_5sd_prices.png</div>
+          </article>
+          <article class="card">
+            <h3>2 SD Signals</h3>
+            <img src="CVX_FANG_2sd_signals.png" alt="CVX / FANG 2 SD Signals">
+            <div class="meta">CVX_FANG_2sd_signals.png</div>
+          </article>
+          <article class="card">
+            <h3>2 SD Prices</h3>
+            <img src="CVX_FANG_2sd_prices.png" alt="CVX / FANG 2 SD Prices">
+            <div class="meta">CVX_FANG_2sd_prices.png</div>
+          </article>
+          <article class="card">
+            <h3>Equity Curve</h3>
+            <img src="CVX_FANG_equity.png" alt="CVX / FANG Equity Curve">
+            <div class="meta">CVX_FANG_equity.png</div>
+          </article>
+        </div>
+      </div>
+      <div class="pair-group">
+        <h2>SLB / HAL</h2>
+        <div class="pair-row">
+          <article class="card">
+            <h3>1.5 SD Signals</h3>
+            <img src="SLB_HAL_1_5sd_signals.png" alt="SLB / HAL 1.5 SD Signals">
+            <div class="meta">SLB_HAL_1_5sd_signals.png</div>
+          </article>
+          <article class="card">
+            <h3>1.5 SD Prices</h3>
+            <img src="SLB_HAL_1_5sd_prices.png" alt="SLB / HAL 1.5 SD Prices">
+            <div class="meta">SLB_HAL_1_5sd_prices.png</div>
+          </article>
+          <article class="card">
+            <h3>2 SD Signals</h3>
+            <img src="SLB_HAL_2sd_signals.png" alt="SLB / HAL 2 SD Signals">
+            <div class="meta">SLB_HAL_2sd_signals.png</div>
+          </article>
+          <article class="card">
+            <h3>2 SD Prices</h3>
+            <img src="SLB_HAL_2sd_prices.png" alt="SLB / HAL 2 SD Prices">
+            <div class="meta">SLB_HAL_2sd_prices.png</div>
+          </article>
+          <article class="card">
+            <h3>Equity Curve</h3>
+            <img src="SLB_HAL_equity.png" alt="SLB / HAL Equity Curve">
+            <div class="meta">SLB_HAL_equity.png</div>
+          </article>
+        </div>
+      </div>
+      <div class="pair-group">
+        <h2>MPC / PSX</h2>
+        <div class="pair-row">
+          <article class="card">
+            <h3>1.5 SD Signals</h3>
+            <img src="MPC_PSX_1_5sd_signals.png" alt="MPC / PSX 1.5 SD Signals">
+            <div class="meta">MPC_PSX_1_5sd_signals.png</div>
+          </article>
+          <article class="card">
+            <h3>1.5 SD Prices</h3>
+            <img src="MPC_PSX_1_5sd_prices.png" alt="MPC / PSX 1.5 SD Prices">
+            <div class="meta">MPC_PSX_1_5sd_prices.png</div>
+          </article>
+          <article class="card">
+            <h3>2 SD Signals</h3>
+            <img src="MPC_PSX_2sd_signals.png" alt="MPC / PSX 2 SD Signals">
+            <div class="meta">MPC_PSX_2sd_signals.png</div>
+          </article>
+          <article class="card">
+            <h3>2 SD Prices</h3>
+            <img src="MPC_PSX_2sd_prices.png" alt="MPC / PSX 2 SD Prices">
+            <div class="meta">MPC_PSX_2sd_prices.png</div>
+          </article>
+          <article class="card">
+            <h3>Equity Curve</h3>
+            <img src="MPC_PSX_equity.png" alt="MPC / PSX Equity Curve">
+            <div class="meta">MPC_PSX_equity.png</div>
+          </article>
+        </div>
+      </div>
+      <div class="pair-group">
+        <h2>PSX / VLO</h2>
+        <div class="pair-row">
+          <article class="card">
+            <h3>1.5 SD Signals</h3>
+            <img src="PSX_VLO_1_5sd_signals.png" alt="PSX / VLO 1.5 SD Signals">
+            <div class="meta">PSX_VLO_1_5sd_signals.png</div>
+          </article>
+          <article class="card">
+            <h3>1.5 SD Prices</h3>
+            <img src="PSX_VLO_1_5sd_prices.png" alt="PSX / VLO 1.5 SD Prices">
+            <div class="meta">PSX_VLO_1_5sd_prices.png</div>
+          </article>
+          <article class="card">
+            <h3>2 SD Signals</h3>
+            <img src="PSX_VLO_2sd_signals.png" alt="PSX / VLO 2 SD Signals">
+            <div class="meta">PSX_VLO_2sd_signals.png</div>
+          </article>
+          <article class="card">
+            <h3>2 SD Prices</h3>
+            <img src="PSX_VLO_2sd_prices.png" alt="PSX / VLO 2 SD Prices">
+            <div class="meta">PSX_VLO_2sd_prices.png</div>
+          </article>
+          <article class="card">
+            <h3>Equity Curve</h3>
+            <img src="PSX_VLO_equity.png" alt="PSX / VLO Equity Curve">
+            <div class="meta">PSX_VLO_equity.png</div>
+          </article>
+        </div>
+      </div>
     </section>
   </div>
 </body>

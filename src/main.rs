@@ -36,7 +36,10 @@ use crate::engine::signals::{per_stock_signals, StockSignal};
 #[tokio::main]
 async fn main() -> Result<()> {
 
-    let mut chart_files = Vec::<String>::new();
+    // Charts grouped per pair (pair label -> [(chart title, path), ...]) so
+    // the dashboard can lay out each pair's charts side by side instead of
+    // interleaving every pair into one flat grid.
+    let mut chart_groups = Vec::<(String, Vec<(String, String)>)>::new();
 
     // Create output folder if it doesn't exist
     std::fs::create_dir_all("output")?;
@@ -157,6 +160,7 @@ async fn main() -> Result<()> {
         // compared side by side and ranked.
         let thresholds: [(f64, f64); 2] = [(1.5, 0.5), (2.0, 0.5)];
         let mut pair_bts = Vec::<BacktestResult>::new();
+        let mut pair_charts = Vec::<(String, String)>::new();
 
         for &(entry, exit) in &thresholds {
             let sigs = generate_signals(&rz, entry, exit);
@@ -211,8 +215,8 @@ async fn main() -> Result<()> {
                 &forecast_stock_sigs,
             )?;
 
-            chart_files.push(left_png);
-            chart_files.push(right_png);
+            pair_charts.push((format!("{} SD Signals", entry), left_png));
+            pair_charts.push((format!("{} SD Prices", entry), right_png));
 
             // --- Backtest ---
             // Use brokerage charge of 0.02% per leg per transition (0.0002)
@@ -233,8 +237,9 @@ async fn main() -> Result<()> {
             &pair_bts[1].equity_curve,
             &format!("{} SD (Sharpe {:.2})", pair_bts[1].threshold, pair_bts[1].sharpe_ratio),
         )?;
-        chart_files.push(equity_png);
+        pair_charts.push(("Equity Curve".to_string(), equity_png));
 
+        chart_groups.push((format!("{} / {}", a, b), pair_charts));
         results.extend(pair_bts);
     }
 
@@ -254,21 +259,28 @@ async fn main() -> Result<()> {
         );
     }
 
-    // 9. Dashboard
-    let dashboard_charts: Vec<(String, String)> = chart_files
+    // 9. Dashboard -- order each pair's chart group to match the ranking
+    // above (best pair first), so the page reads best-to-worst top to
+    // bottom, same as the ranking table sitting above it.
+    let mut pair_rank_order = Vec::<String>::new();
+    let mut seen_pairs = std::collections::HashSet::new();
+    for r in &results {
+        let label = format!("{} / {}", r.pair.0, r.pair.1);
+        if seen_pairs.insert(label.clone()) {
+            pair_rank_order.push(label);
+        }
+    }
+    let ordered_chart_groups: Vec<(String, Vec<(String, String)>)> = pair_rank_order
         .iter()
-        .filter_map(|path| {
-            let title = path
-                .split('/')
-                .last()
-                .unwrap_or(path)
-                .replace(".png", "")
-                .replace('_', " ");
-            Some((title, path.clone()))
+        .filter_map(|label| {
+            chart_groups
+                .iter()
+                .find(|(group_label, _)| group_label == label)
+                .cloned()
         })
         .collect();
 
-    export_full_dashboard("output/dashboard.html", &dashboard_charts, &results)?;
+    export_full_dashboard("output/dashboard.html", &ordered_chart_groups, &results)?;
     println!("Dashboard saved to output/dashboard.html");
 
     // 10. Strategy summary

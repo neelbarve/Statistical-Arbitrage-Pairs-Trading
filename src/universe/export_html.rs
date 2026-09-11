@@ -65,13 +65,17 @@ pub fn export_chart_dashboard(path: &str, charts: &[(String, String)]) -> anyhow
 
 // Same layout as export_chart_dashboard, plus a "best pairs to trade"
 // ranking table (sorted best-first by the caller) rendered above the chart
-// grid, and img src attributes written relative to the dashboard file's own
-// directory (chart_files/paths passed in from main.rs are "output/..." but
-// the dashboard itself lives inside output/, so the plain "output/..." src
-// used to 404 in the browser -- this is the fix for that).
+// groups, and img src attributes written relative to the dashboard file's
+// own directory (paths passed in from main.rs are "output/..." but the
+// dashboard itself lives inside output/, so the plain "output/..." src used
+// to 404 in the browser -- this is the fix for that).
+//
+// `chart_groups` is one entry per pair -- (pair label, that pair's charts)
+// -- so every chart belonging to the same pair renders together, side by
+// side, instead of being interleaved with every other pair in one flat grid.
 pub fn export_full_dashboard(
     path: &str,
-    charts: &[(String, String)],
+    chart_groups: &[(String, Vec<(String, String)>)],
     rankings: &[BacktestResult],
 ) -> anyhow::Result<()> {
     let mut file = File::create(path)?;
@@ -98,16 +102,23 @@ pub fn export_full_dashboard(
     writeln!(file, "    .neg {{ color: #f87171; }}")?;
     writeln!(file, "    .chart-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 18px; }}")?;
     writeln!(file, "    .card {{ background: #10243b; border: 1px solid #23374f; border-radius: 16px; padding: 14px; box-shadow: 0 10px 24px rgba(0,0,0,.18); }}")?;
-    writeln!(file, "    .card h2 {{ margin: 0 0 10px; font-size: 1.05rem; color: #f8fafc; }}")?;
+    writeln!(file, "    .card h2, .card h3 {{ margin: 0 0 10px; font-size: 1.05rem; color: #f8fafc; }}")?;
     writeln!(file, "    .card img {{ width: 100%; height: auto; border-radius: 12px; display: block; background: white; }}")?;
     writeln!(file, "    .card .meta {{ margin-top: 8px; font-size: 0.9rem; color: #8ca0bc; }}")?;
+    writeln!(file, "    .pair-group {{ margin-bottom: 30px; }}")?;
+    writeln!(file, "    .pair-group h2 {{ margin: 0 0 12px; font-size: 1.25rem; color: #f8fafc; border-bottom: 1px solid #23374f; padding-bottom: 8px; }}")?;
+    // Each pair's own charts sit in their own grid (not the shared
+    // .chart-grid) so they lay out side by side within the pair, and only
+    // wrap onto a new line -- rather than shrinking below readable size --
+    // once the viewport can't fit them all in one row.
+    writeln!(file, "    .pair-row {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }}")?;
     writeln!(file, "  </style>")?;
     writeln!(file, "</head>")?;
     writeln!(file, "<body>")?;
     writeln!(file, "  <div class=\"page\">")?;
     writeln!(file, "    <section class=\"hero\">")?;
     writeln!(file, "      <h1>Signal and price dashboard</h1>")?;
-    writeln!(file, "      <p>All generated charts from the current run are shown together for quick review.</p>")?;
+    writeln!(file, "      <p>Each pair's charts are grouped side by side below the ranking table, best pair first.</p>")?;
     writeln!(file, "    </section>")?;
 
     if !rankings.is_empty() {
@@ -142,18 +153,25 @@ pub fn export_full_dashboard(
         writeln!(file, "    </section>")?;
     }
 
-    writeln!(file, "    <section class=\"chart-grid\">")?;
+    writeln!(file, "    <section>")?;
 
-    for (title, path) in charts {
-        // Charts are written next to this dashboard file (both under
-        // output/), so the <img> src must be just the filename -- not the
-        // "output/..." path used when the chart was written to disk.
-        let filename = path.rsplit('/').next().unwrap_or(path);
-        writeln!(file, "      <article class=\"card\">")?;
-        writeln!(file, "        <h2>{}</h2>", title)?;
-        writeln!(file, "        <img src=\"{}\" alt=\"{}\">", filename, title)?;
-        writeln!(file, "        <div class=\"meta\">{}</div>", filename)?;
-        writeln!(file, "      </article>")?;
+    for (pair_label, charts) in chart_groups {
+        writeln!(file, "      <div class=\"pair-group\">")?;
+        writeln!(file, "        <h2>{}</h2>", pair_label)?;
+        writeln!(file, "        <div class=\"pair-row\">")?;
+        for (title, path) in charts {
+            // Charts are written next to this dashboard file (both under
+            // output/), so the <img> src must be just the filename -- not
+            // the "output/..." path used when the chart was written to disk.
+            let filename = path.rsplit('/').next().unwrap_or(path);
+            writeln!(file, "          <article class=\"card\">")?;
+            writeln!(file, "            <h3>{}</h3>", title)?;
+            writeln!(file, "            <img src=\"{}\" alt=\"{} {}\">", filename, pair_label, title)?;
+            writeln!(file, "            <div class=\"meta\">{}</div>", filename)?;
+            writeln!(file, "          </article>")?;
+        }
+        writeln!(file, "        </div>")?;
+        writeln!(file, "      </div>")?;
     }
 
     writeln!(file, "    </section>")?;
@@ -195,9 +213,14 @@ mod tests {
         let path = dir.join("dashboard.html");
         // Mirror how main.rs builds chart paths: "output/<file>.png", while
         // the dashboard file itself is also written into output/.
-        let charts = vec![
-            ("AAA BBB signals".to_string(), "output/AAA_BBB_signals.png".to_string()),
-        ];
+        let chart_groups = vec![(
+            "AAA / BBB".to_string(),
+            vec![
+                ("1.5 SD Signals".to_string(), "output/AAA_BBB_1_5sd_signals.png".to_string()),
+                ("1.5 SD Prices".to_string(), "output/AAA_BBB_1_5sd_prices.png".to_string()),
+                ("Equity Curve".to_string(), "output/AAA_BBB_equity.png".to_string()),
+            ],
+        )];
         let mut result = BacktestResult {
             pair: ("AAA".into(), "BBB".into()),
             threshold: 1.5,
@@ -212,16 +235,19 @@ mod tests {
         };
 
         std::fs::create_dir_all(&dir).unwrap();
-        export_full_dashboard(path.to_str().unwrap(), &charts, std::slice::from_mut(&mut result)).unwrap();
+        export_full_dashboard(path.to_str().unwrap(), &chart_groups, std::slice::from_mut(&mut result)).unwrap();
 
         let html = std::fs::read_to_string(&path).unwrap();
         // The bug: img src used to still carry the "output/" prefix even
         // though the dashboard html lives inside output/ itself, which
         // 404'd in the browser. It must now be just the filename.
-        assert!(html.contains("src=\"AAA_BBB_signals.png\""));
+        assert!(html.contains("src=\"AAA_BBB_1_5sd_signals.png\""));
         assert!(!html.contains("src=\"output/"));
         assert!(html.contains("AAA / BBB"));
         assert!(html.contains("ranked best to trade"));
+        // The pair's charts must all be grouped under one pair-row, not
+        // scattered into a single flat grid mixed with other pairs.
+        assert!(html.contains("pair-row"));
 
         std::fs::remove_file(path).ok();
         std::fs::remove_dir_all(dir).ok();
