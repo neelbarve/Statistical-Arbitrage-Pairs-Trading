@@ -249,8 +249,8 @@ async fn main() -> Result<()> {
     println!("\nPairs ranked best to trade (by Sharpe ratio):");
     for (i, r) in results.iter().enumerate() {
         println!(
-            "{:>2}. {} / {} | entry={:.1}SD | Sharpe={:.3} | MaxDD={:.4} | NetPnL={:.4} | trades={}",
-            i + 1, r.pair.0, r.pair.1, r.threshold, r.sharpe_ratio, r.max_drawdown, r.total_pnl, r.trades
+            "{:>2}. {} / {} | entry={:.1}SD | rf={:.2}% | vol={:.4} | Sharpe={:.3} | MaxDD={:.4} | NetPnL={:.4} | trades={}",
+            i + 1, r.pair.0, r.pair.1, r.threshold, r.risk_free_rate * 100.0, r.volatility, r.sharpe_ratio, r.max_drawdown, r.total_pnl, r.trades
         );
     }
 

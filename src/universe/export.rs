@@ -9,7 +9,7 @@ pub fn export_backtests(path: &str, results: &[BacktestResult]) -> Result<()> {
     // Export both gross and total costs so users can see gross vs net PnL
     wtr.write_record(&[
         "rank", "stock1", "stock2", "entry_threshold_sd", "gross_pnl", "total_costs",
-        "net_pnl", "sharpe_ratio", "max_drawdown", "trades",
+        "net_pnl", "risk_free_rate", "volatility", "sharpe_ratio", "max_drawdown", "trades",
     ])?;
     for (i, r) in results.iter().enumerate() {
         // gross_pnl = net_pnl + total_costs
@@ -22,6 +22,8 @@ pub fn export_backtests(path: &str, results: &[BacktestResult]) -> Result<()> {
             gross.to_string(),
             r.total_costs.to_string(),
             r.total_pnl.to_string(),
+            format!("{:.4}", r.risk_free_rate),
+            format!("{:.4}", r.volatility),
             format!("{:.4}", r.sharpe_ratio),
             format!("{:.4}", r.max_drawdown),
             r.trades.to_string(),

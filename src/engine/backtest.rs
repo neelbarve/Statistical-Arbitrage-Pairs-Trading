@@ -21,6 +21,13 @@
 // accidental behavior change to the existing, already-working code path.
 use super::signals::Signal;
 
+// Annualized risk-free rate assumed for the Sharpe ratio below (e.g. a
+// representative T-bill yield). Per-bar equity changes are treated as
+// returns on a unit notional, so this is subtracted on the same basis --
+// see README.md "Assumptions" for the caveat this implies.
+pub const RISK_FREE_RATE_ANNUAL: f64 = 0.04;
+const TRADING_BARS_PER_YEAR: f64 = 252.0;
+
 #[derive(Debug, Clone)]
 pub struct BacktestResult {
     pub pair: (String, String),
@@ -28,9 +35,11 @@ pub struct BacktestResult {
     pub total_pnl: f64,
     pub total_costs: f64,   // NEW: reported separately so gross vs net PnL is always visible
     pub trades: usize,
-    pub equity_curve: Vec<f64>,  // NEW: cumulative net PnL at each bar, for equity-curve plots
-    pub max_drawdown: f64,       // NEW: largest peak-to-trough drop in the equity curve
-    pub sharpe_ratio: f64,       // NEW: annualized Sharpe ratio of per-bar equity changes
+    pub equity_curve: Vec<f64>,   // NEW: cumulative net PnL at each bar, for equity-curve plots
+    pub max_drawdown: f64,        // NEW: largest peak-to-trough drop in the equity curve
+    pub risk_free_rate: f64,      // NEW: annualized risk-free rate used in the Sharpe ratio below
+    pub volatility: f64,          // NEW: annualized volatility of per-bar equity changes
+    pub sharpe_ratio: f64,        // NEW: annualized, risk-free-adjusted Sharpe ratio
 }
 
 pub fn backtest_pair(
@@ -95,7 +104,8 @@ pub fn backtest_pair(
     }
 
     let max_drawdown = max_drawdown(&equity_curve);
-    let sharpe_ratio = sharpe_ratio(&equity_curve);
+    let volatility = volatility(&equity_curve);
+    let sharpe_ratio = sharpe_ratio(&equity_curve, RISK_FREE_RATE_ANNUAL);
 
     BacktestResult {
         pair: ("".into(), "".into()),
@@ -105,6 +115,8 @@ pub fn backtest_pair(
         trades,
         equity_curve,
         max_drawdown,
+        risk_free_rate: RISK_FREE_RATE_ANNUAL,
+        volatility,
         sharpe_ratio,
     }
 }
@@ -126,21 +138,41 @@ fn max_drawdown(equity: &[f64]) -> f64 {
     worst
 }
 
-// Annualized Sharpe ratio computed from bar-over-bar equity changes,
-// assuming ~252 trading bars per year. Returns 0.0 when there is not
-// enough data or no variance (flat equity curve) to avoid division by zero.
-fn sharpe_ratio(equity: &[f64]) -> f64 {
+fn bar_returns(equity: &[f64]) -> Vec<f64> {
+    equity.windows(2).map(|w| w[1] - w[0]).collect()
+}
+
+fn mean_and_sd(returns: &[f64]) -> (f64, f64) {
+    let mean = returns.iter().sum::<f64>() / returns.len() as f64;
+    let var = returns.iter().map(|r| (r - mean).powi(2)).sum::<f64>() / returns.len() as f64;
+    (mean, var.sqrt())
+}
+
+// Annualized volatility (standard deviation) of bar-over-bar equity
+// changes. Returns 0.0 when there isn't enough data to measure spread.
+fn volatility(equity: &[f64]) -> f64 {
     if equity.len() < 3 {
         return 0.0;
     }
-    let returns: Vec<f64> = equity.windows(2).map(|w| w[1] - w[0]).collect();
-    let mean = returns.iter().sum::<f64>() / returns.len() as f64;
-    let var = returns.iter().map(|r| (r - mean).powi(2)).sum::<f64>() / returns.len() as f64;
-    let sd = var.sqrt();
+    let (_, sd) = mean_and_sd(&bar_returns(equity));
+    sd * TRADING_BARS_PER_YEAR.sqrt()
+}
+
+// Annualized, risk-free-adjusted Sharpe ratio computed from bar-over-bar
+// equity changes, assuming ~252 trading bars per year. Returns 0.0 when
+// there is not enough data or no variance (flat equity curve) to avoid
+// division by zero.
+fn sharpe_ratio(equity: &[f64], risk_free_rate_annual: f64) -> f64 {
+    if equity.len() < 3 {
+        return 0.0;
+    }
+    let returns = bar_returns(equity);
+    let (mean, sd) = mean_and_sd(&returns);
     if sd <= 1e-12 {
         return 0.0;
     }
-    (mean / sd) * (252.0_f64).sqrt()
+    let rf_per_bar = risk_free_rate_annual / TRADING_BARS_PER_YEAR;
+    ((mean - rf_per_bar) / sd) * TRADING_BARS_PER_YEAR.sqrt()
 }
 
 #[cfg(test)]
