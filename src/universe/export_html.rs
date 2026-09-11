@@ -115,13 +115,13 @@ pub fn export_full_dashboard(
         writeln!(file, "      <h2>Pairs ranked best to trade (by Sharpe ratio)</h2>")?;
         writeln!(file, "      <div class=\"table-wrap\">")?;
         writeln!(file, "      <table>")?;
-        writeln!(file, "        <thead><tr><th>Rank</th><th>Pair</th><th>Entry SD</th><th>Risk-Free Rate</th><th>Volatility</th><th>Sharpe</th><th>Max Drawdown</th><th>Net PnL</th><th>Trades</th></tr></thead>")?;
+        writeln!(file, "        <thead><tr><th>Rank</th><th>Pair</th><th>Entry SD</th><th>Risk-Free Rate</th><th>Volatility</th><th>Sharpe</th><th>Max Drawdown</th><th>Transaction Cost</th><th>Net PnL</th><th>Trades</th></tr></thead>")?;
         writeln!(file, "        <tbody>")?;
         for (i, r) in rankings.iter().enumerate() {
             let pnl_class = if r.total_pnl >= 0.0 { "pos" } else { "neg" };
             writeln!(
                 file,
-                "          <tr><td>{}</td><td>{} / {}</td><td>{:.1}</td><td>{:.2}%</td><td>{:.4}</td><td>{:.3}</td><td>{:.4}</td><td class=\"{}\">{:.4}</td><td>{}</td></tr>",
+                "          <tr><td>{}</td><td>{} / {}</td><td>{:.1}</td><td>{:.2}%</td><td>{:.4}</td><td>{:.3}</td><td>{:.4}</td><td>{:.4}</td><td class=\"{}\">{:.4}</td><td>{}</td></tr>",
                 i + 1,
                 r.pair.0,
                 r.pair.1,
@@ -130,6 +130,7 @@ pub fn export_full_dashboard(
                 r.volatility,
                 r.sharpe_ratio,
                 r.max_drawdown,
+                r.total_costs,
                 pnl_class,
                 r.total_pnl,
                 r.trades,

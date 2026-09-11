@@ -15,7 +15,7 @@ A Rust statistical-arbitrage pairs-trading engine for the energy sector. Fetches
 ## Output (`output/`)
 
 - `dashboard.html` — ranking table + price/signal charts (both thresholds) and equity curves for every pair.
-- `backtests_energy.csv` — rank, pair, threshold, gross/net PnL, risk-free rate, volatility, Sharpe, max drawdown, trade count.
+- `backtests_energy.csv` — rank, pair, threshold, gross PnL, transaction cost, net PnL, risk-free rate, volatility, Sharpe, max drawdown, trade count.
 - Per-pair PNGs: `<A>_<B>_{1_5sd,2sd}_{signals,prices}.png`, `<A>_<B>_equity.png`.
 
 ## Running
@@ -30,39 +30,40 @@ Requires network access to fetch price data from Yahoo Finance. Output is writte
 
 Yahoo Finance data is live, so results shift run to run — this table is from one run on 2026-09-11, included for reference. Full ranking in `output/backtests_energy.csv`.
 
-| Rank | Pair | Entry SD | Risk-Free Rate | Volatility | Sharpe | Max Drawdown | Net PnL | Trades |
-|---|---|---|---|---|---|---|---|---|
-| 1 | SLB / APA | 1.5 | 4.00% | 1.6044 | 0.312 | 6.2414 | 7.50 | 54 |
-| 2 | DVN / FANG | 1.5 | 4.00% | 3.0500 | 0.258 | 10.1834 | 11.48 | 47 |
-| 3 | COP / FANG | 1.5 | 4.00% | 2.3203 | 0.181 | 4.2961 | 6.37 | 54 |
-| 4 | EOG / FANG | 1.5 | 4.00% | 2.6668 | 0.178 | 7.4005 | 7.12 | 48 |
-| 5 | HAL / APA | 1.5 | 4.00% | 1.2287 | 0.091 | 2.9023 | 2.10 | 59 |
-| 6 | XOM / FANG | 1.5 | 4.00% | 1.5371 | 0.088 | 4.1831 | 2.43 | 36 |
-| 7–17 | (all 2.0 SD pairs) | 2.0 | 4.00% | 0.0000 | 0.000 | 0.0000 | 0.00 | 0 |
-| 18 | CVX / FANG | 1.5 | 4.00% | 4.1806 | -0.048 | 18.8277 | -2.20 | 59 |
-| 19 | CVX / MPC | 1.5 | 4.00% | 4.3307 | -0.119 | 19.8911 | -6.58 | 48 |
-| 20 | MPC / PSX | 1.5 | 4.00% | 2.0801 | -0.177 | 8.8871 | -4.55 | 47 |
-| 21 | PSX / VLO | 1.5 | 4.00% | 2.5979 | -0.243 | 11.9833 | -8.21 | 46 |
-| 22 | SLB / HAL | 1.5 | 4.00% | 1.0698 | -0.610 | 9.4672 | -8.49 | 58 |
+| Rank | Pair | Entry SD | Risk-Free Rate | Volatility | Sharpe | Max Drawdown | Transaction Cost | Net PnL | Trades |
+|---|---|---|---|---|---|---|---|---|---|
+| 1 | EOG / XOM | 1.5 | 4.00% | 2.0702 | 0.607 | 2.5469 | 0.04 | 17.99 | 48 |
+| 2 | SLB / APA | 1.5 | 4.00% | 1.6044 | 0.312 | 6.2415 | 0.04 | 7.50 | 54 |
+| 3 | DVN / FANG | 1.5 | 4.00% | 3.0500 | 0.258 | 10.1833 | 0.04 | 11.48 | 47 |
+| 4 | COP / FANG | 1.5 | 4.00% | 2.3203 | 0.181 | 4.2960 | 0.04 | 6.37 | 54 |
+| 5 | EOG / FANG | 1.5 | 4.00% | 2.6668 | 0.178 | 7.4005 | 0.04 | 7.12 | 48 |
+| 6 | HAL / APA | 1.5 | 4.00% | 1.2287 | 0.091 | 2.9024 | 0.05 | 2.10 | 59 |
+| 7 | XOM / FANG | 1.5 | 4.00% | 1.5372 | 0.088 | 4.1831 | 0.03 | 2.43 | 36 |
+| 8–19 | (all 2.0 SD pairs) | 2.0 | 4.00% | 0.0000 | 0.000 | 0.0000 | 0.00 | 0.00 | 0 |
+| 20 | CVX / FANG | 1.5 | 4.00% | 4.1806 | -0.048 | 18.8278 | 0.05 | -2.20 | 59 |
+| 21 | CVX / MPC | 1.5 | 4.00% | 4.3308 | -0.119 | 19.8911 | 0.04 | -6.58 | 48 |
+| 22 | MPC / PSX | 1.5 | 4.00% | 2.0801 | -0.177 | 8.8869 | 0.04 | -4.55 | 47 |
+| 23 | PSX / VLO | 1.5 | 4.00% | 2.5979 | -0.243 | 11.9832 | 0.04 | -8.21 | 46 |
+| 24 | SLB / HAL | 1.5 | 4.00% | 1.0698 | -0.610 | 9.4672 | 0.05 | -8.49 | 58 |
 
 Every 2.0 SD pair shows zero trades: with this z-score's 10/40-day window, the spread rarely swings past 2 SD, so the conservative threshold never fires. It's a real (if underwhelming) finding, not a bug — see Limitations below.
 
 ### Top 3 pairs
 
-**#1 SLB / APA** (Sharpe 0.312)
+**#1 EOG / XOM** (Sharpe 0.607)
+
+![EOG/XOM price + signals](output/EOG_XOM_1_5sd_prices.png)
+![EOG/XOM equity curve](output/EOG_XOM_equity.png)
+
+**#2 SLB / APA** (Sharpe 0.312)
 
 ![SLB/APA price + signals](output/SLB_APA_1_5sd_prices.png)
 ![SLB/APA equity curve](output/SLB_APA_equity.png)
 
-**#2 DVN / FANG** (Sharpe 0.258)
+**#3 DVN / FANG** (Sharpe 0.258)
 
 ![DVN/FANG price + signals](output/DVN_FANG_1_5sd_prices.png)
 ![DVN/FANG equity curve](output/DVN_FANG_equity.png)
-
-**#3 COP / FANG** (Sharpe 0.181)
-
-![COP/FANG price + signals](output/COP_FANG_1_5sd_prices.png)
-![COP/FANG equity curve](output/COP_FANG_equity.png)
 
 ## Layout
 
