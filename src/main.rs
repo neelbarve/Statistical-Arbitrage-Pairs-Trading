@@ -9,7 +9,7 @@ use std::io::Write;
 use universe::fetch_all::fetch_universe;
 use universe::correlation::correlation_matrix;
 use universe::cointegration_scan::scan_cointegration;
-use model::spread::{hedge_ratio_ols, spread, zscore, rolling_zscore, std_spread};
+use model::spread::{hedge_ratio_ols, spread, zscore, rolling_zscore, walk_forward_hedge_ratio, half_life};
 use engine::backtest::{backtest_pair, BacktestResult};
 use engine::align::align_series;
 use universe::export::export_backtests;
@@ -21,17 +21,35 @@ use chrono::NaiveDate;
 use crate::model::forecast::forecast_arma12;
 use crate::engine::signals::{per_stock_signals, StockSignal};
 
-
-//use crate::engine::signals::per_stock_signals_from_spread;
-
-
-
-
-
-
-
-
-
+// ---------------------------------------------------------------------
+// WALK-FORWARD HEDGE RATIO CONFIGURATION
+// ---------------------------------------------------------------------
+// These two numbers control how the hedge ratio (and hence the spread and
+// every entry/exit signal built on top of it) is estimated for EVERY pair
+// below. Read model::spread::walk_forward_hedge_ratio's doc comment first
+// if the terms "formation period" / "lookback" are unfamiliar.
+//
+// WALK_FORWARD_LOOKBACK: how many trailing bars (trading days) are used
+// each time the hedge ratio is refit. Set to one trading year (~252 days),
+// matching the 12-month "formation period" convention from Gatev,
+// Goetzmann & Rouwenhorst (2006), "Pairs Trading: Performance of a
+// Relative-Value Arbitrage Rule," Review of Financial Studies 19(3) --
+// the paper that established the modern empirical pairs-trading
+// methodology this project follows loosely. A full year of daily data
+// gives the OLS fit enough observations to be statistically stable while
+// still being short enough to track a relationship that can genuinely
+// drift over a 10+ year sample.
+//
+// WALK_FORWARD_REESTIMATE_EVERY: how often (in bars) the hedge ratio is
+// refit using that trailing window. Refitting every single bar would be
+// needlessly expensive and would let the ratio chase short-term noise;
+// refitting too rarely risks trading on a stale relationship. Once a
+// month (~21 trading days) is a common practical middle ground in
+// industry pairs-trading writeups (e.g. Chan, "Algorithmic Trading,"
+// 2013) and keeps the number of OLS fits per pair small (roughly
+// sample_length / 21, a few hundred at most -- negligible compute cost).
+const WALK_FORWARD_LOOKBACK: usize = 252;
+const WALK_FORWARD_REESTIMATE_EVERY: usize = 21;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -43,7 +61,6 @@ async fn main() -> Result<()> {
 
     // Create output folder if it doesn't exist
     std::fs::create_dir_all("output")?;
-    //println!("Output folder ready.");
 
     // 1. Universe
     let tickers = energy_universe();
@@ -67,7 +84,9 @@ async fn main() -> Result<()> {
         println!("{}/{} corr={:.3}", a, b, c);
     }
 
-    // 5. Cointegration
+    // 5. Cointegration -- see universe/cointegration_scan.rs for exactly
+    // what "cointegrated" means here and why it tests both regression
+    // directions before deciding.
     let coint = scan_cointegration(&data);
     let coint_pairs: Vec<_> = coint.into_iter()
         .filter(|(_, _, _, is_c)| *is_c)
@@ -78,7 +97,12 @@ async fn main() -> Result<()> {
         println!("{}/{} ADF={:.3}", a, b, adf);
     }
 
-    // 6. Demo if empty
+    // 6. Demo if empty -- illustrative-only fallback so the program still
+    // produces *something* visual when no pair in the universe clears the
+    // cointegration bar. This intentionally uses the SIMPLER one-shot,
+    // full-sample, raw-price hedge ratio (not the walk-forward/log-price
+    // one used for real trading below) since it exists purely to draw two
+    // example charts, not to generate a tradeable signal.
     if coint_pairs.is_empty() {
         println!("No cointegrated pairs found — generating demo plots.");
 
@@ -99,38 +123,126 @@ async fn main() -> Result<()> {
         return Ok(());
     }
 
-    // 7. Backtest + charts
+    // 7. Backtest + charts, one pair at a time.
     let mut results = Vec::<BacktestResult>::new();
 
     for (a, b, _, _) in &coint_pairs {
-        let xa = data.iter().find(|(n, _, _)| n == a).unwrap().1.clone();
-        let yb = data.iter().find(|(n, _, _)| n == b).unwrap().1.clone();
-        let n = xa.len().min(yb.len());
-        let (x, y) = (&xa[..n], &yb[..n]);
+        // Raw closing prices for both legs of the pair, trimmed to the
+        // shorter of the two (should already be equal length after
+        // align_series above -- this is just a defensive re-check).
+        let xa_raw = data.iter().find(|(n, _, _)| n == a).unwrap().1.clone();
+        let yb_raw = data.iter().find(|(n, _, _)| n == b).unwrap().1.clone();
+        let n = xa_raw.len().min(yb_raw.len());
+        let xa_raw = xa_raw[..n].to_vec();
+        let yb_raw = yb_raw[..n].to_vec();
+        let hist_dates_raw = &hist_dates[..n];
+        let timestamps_raw = &timestamps[..n];
 
-        let (alpha, beta) = hedge_ratio_ols(x, y)?;
-        let spr = spread(alpha, beta, x, y);
-        let _z = zscore(&spr);
+        if n <= WALK_FORWARD_LOOKBACK + 60 {
+            // Not enough history for a full formation period PLUS a
+            // meaningfully long trading window afterward -- skip rather
+            // than trade on a near-empty sample.
+            println!(
+                "Skipping {}/{}: only {} bars of aligned history, need > {} (a {}-bar formation period plus room to trade).",
+                a, b, n, WALK_FORWARD_LOOKBACK + 60, WALK_FORWARD_LOOKBACK
+            );
+            continue;
+        }
+
+        // ---- Cointegration-consistent, walk-forward, log-price spread ----
+        //
+        // WHY LOG PRICES: universe/cointegration_scan.rs tests
+        // `ln(price_a) = alpha + beta * ln(price_b)`, not raw prices --
+        // using log prices is the standard convention for pairs trading
+        // (Vidyamurthy, "Pairs Trading: Quantitative Methods and
+        // Analysis," 2004, ch. 3) because it makes `beta` interpretable as
+        // a relative-return elasticity and keeps the spread's scale
+        // stable even as both stocks' price LEVELS drift apart over a
+        // 10+ year sample (a raw-price spread between a $40 stock and a
+        // $150 stock means something very different in 2012 than in
+        // 2026). Trading a DIFFERENT spread definition than the one
+        // actually tested for cointegration would mean the statistical
+        // guarantee from the screening step doesn't really apply to what
+        // gets traded -- an inconsistency an earlier version of this
+        // pipeline had (raw-price hedge ratio used for trading, log-price
+        // hedge ratio used only for screening). Fixed here by using log
+        // prices in both places.
+        //
+        // WHY WALK-FORWARD: see the extensive comment on
+        // model::spread::walk_forward_hedge_ratio. In one sentence: fitting
+        // a single hedge ratio on the ENTIRE price history (as this
+        // pipeline originally did) means even the EARLIEST simulated
+        // trades use a beta that implicitly "knows" about price moves
+        // that, at that point in simulated time, hadn't happened yet --
+        // textbook look-ahead bias that makes backtests look better than
+        // any real trader could have actually achieved. walk_forward_
+        // hedge_ratio instead only ever fits on a trailing window of bars
+        // that were already in the past at each point in time.
+        let xa_log: Vec<f64> = xa_raw.iter().map(|p| p.ln()).collect();
+        let yb_log: Vec<f64> = yb_raw.iter().map(|p| p.ln()).collect();
+        let wf = walk_forward_hedge_ratio(&xa_log, &yb_log, WALK_FORWARD_LOOKBACK, WALK_FORWARD_REESTIMATE_EVERY);
+
+        // Bars before WALK_FORWARD_LOOKBACK have no fitted hedge ratio yet
+        // (walk_forward_hedge_ratio leaves them as NaN -- this is the
+        // "formation period": there simply isn't a full lookback window of
+        // real history behind them yet). Real, out-of-sample trading can
+        // only start once that first full window exists, so every series
+        // below is sliced to begin exactly there.
+        let start = WALK_FORWARD_LOOKBACK;
+        let spr: Vec<f64> = wf.spread[start..].to_vec();       // log-space spread, walk-forward, no look-ahead
+        let hist_dates: Vec<NaiveDate> = hist_dates_raw[start..].to_vec();
+        let timestamps: Vec<_> = timestamps_raw[start..].to_vec();
+        let xa: Vec<f64> = xa_raw[start..].to_vec();            // RAW prices (post-formation) -- used for dollar PnL and price charts
+        let yb: Vec<f64> = yb_raw[start..].to_vec();
+        let (x, y) = (xa.as_slice(), yb.as_slice());
+
+        // 10-day-vs-40-day rolling z-score on the walk-forward log spread
+        // -- see README.md "Pipeline" step 3 for exactly what "1 SD" means
+        // here (it's the spread's own trailing 40-day standard deviation,
+        // recomputed at every bar).
         let rz = rolling_zscore(&spr, 10, 40);
 
-        let forecast_A = forecast_arma12(&xa, 5)?;
-        let forecast_B = forecast_arma12(&yb, 5)?;
+        // ---- Half-life diagnostic and tradability gate ---------------
+        // A pair can pass the cointegration test on borderline statistical
+        // grounds while showing essentially no usable mean reversion in
+        // practice -- cointegration asks "does this spread eventually come
+        // back?", half-life asks "how fast, concretely?" A spread with no
+        // measurable pull back toward its mean isn't a coherent
+        // mean-reversion trade no matter how good its p-value looked, so
+        // such pairs are skipped here rather than traded anyway. See
+        // model::spread::half_life's doc comment for the full derivation.
+        let hl = half_life(&spr);
+        match hl {
+            Some(h) => println!("{}/{}: half-life ≈ {:.1} bars", a, b, h),
+            None => {
+                println!(
+                    "Skipping {}/{}: cointegrated by the ADF test, but the walk-forward spread shows no measurable mean reversion (half-life undefined) -- not a coherent mean-reversion trade regardless of the cointegration p-value.",
+                    a, b
+                );
+                continue;
+            }
+        }
 
+        let forecast_a = forecast_arma12(&xa, 5)?;
+        let forecast_b = forecast_arma12(&yb, 5)?;
 
-                // ---- 5-DAY FORECAST ----
+        // ---- 5-DAY FORECAST ----
+        // Forecasts the log spread itself (same series the live z-score
+        // and signals are built from, per the log-price discussion
+        // above), then re-expresses that forecast in z-score units using
+        // only the last 20 bars of REALIZED spread as the normalization
+        // window (normalize_with_last_window) -- i.e. the forecast is
+        // scored against "how unusual is this relative to what just
+        // happened," not against the whole multi-year history.
         let forecast_spread = forecast_arma12(&spr, 5)?;
-        //let forecast_spread = forecast_spread;
         let forecast_z = normalize_with_last_window(&spr, &forecast_spread);
         let forecast_sigs = generate_signals(&forecast_z, 0.2, 0.1);
 
-
-
-        // --- STEP 3: Build forecast dates (5 days ahead) ---
+        // --- Build forecast dates (5 days ahead) ---
         let last_date = hist_dates.last().unwrap();
         let forecast_dates: Vec<NaiveDate> = (1..=5)
             .map(|i| *last_date + chrono::Duration::days(i))
             .collect();
-
 
         // Convert to BUY/SELL instructions
         let forecast_trades: Vec<_> = forecast_sigs
@@ -138,26 +250,22 @@ async fn main() -> Result<()> {
             .map(|s| trade_direction(a, b, *s))
             .collect();
 
-        // Print forecast for debugging
         println!("\n5-DAY FORECAST for {}-{}:", a, b);
         for i in 0..5 {
             if let Some((long_side, short_side)) = &forecast_trades[i] {
-
                 let last_ts = timestamps.last().unwrap();
-                let future_ts = (*last_ts + chrono::Duration::days((i+1) as i64))
+                let future_ts = (*last_ts + chrono::Duration::days((i + 1) as i64))
                     .format("%Y-%m-%d")
                     .to_string();
-
                 println!("{} → {} / {}", future_ts, long_side, short_side);
-
             } else {
                 println!("Day {} → FLAT", i + 1);
             }
         }
 
-        // --- Two entry thresholds: aggressive (1.5 SD) and conservative (2.0 SD) ---
-        // Each is backtested and charted independently so they can be
-        // compared side by side and ranked.
+        // --- Two entry thresholds: aggressive (1.5 SD) and conservative
+        // (2.0 SD) -- each backtested and charted independently so they
+        // can be compared side by side and ranked.
         let thresholds: [(f64, f64); 2] = [(1.5, 0.5), (2.0, 0.5)];
         let mut pair_bts = Vec::<BacktestResult>::new();
         let mut pair_charts = Vec::<(String, String)>::new();
@@ -167,29 +275,18 @@ async fn main() -> Result<()> {
 
             // --- Historical per-stock signals ---
             let mut stock_sigs = per_stock_signals(&sigs, &xa, &yb);
-            // --- FIX: pad signals to match price length ---
             while stock_sigs.len() < xa.len() {
                 stock_sigs.insert(0, StockSignal::Flat);
             }
 
-            let mut forecast_stock_sigs = per_stock_signals(&forecast_sigs, &forecast_A, &forecast_B);
-            while forecast_stock_sigs.len() < forecast_A.len() {
+            let mut forecast_stock_sigs = per_stock_signals(&forecast_sigs, &forecast_a, &forecast_b);
+            while forecast_stock_sigs.len() < forecast_a.len() {
                 forecast_stock_sigs.insert(0, StockSignal::Flat);
             }
 
             let tag = format!("{}sd", entry).replace('.', "_");
             let left_png = format!("output/{}_{}_{}_signals.png", a, b, tag);
             let right_png = format!("output/{}_{}_{}_prices.png", a, b, tag);
-
-            // Debug prints
-            println!("[{} SD] hist_dates.len() = {}", entry, hist_dates.len());
-            println!("[{} SD] xa.len() = {}", entry, xa.len());
-            println!("[{} SD] yb.len() = {}", entry, yb.len());
-            println!("[{} SD] sigs.len() = {}", entry, sigs.len());
-            println!("[{} SD] stock_sigs.len() = {}", entry, stock_sigs.len());
-            println!("[{} SD] forecast_A.len() = {}", entry, forecast_A.len());
-            println!("[{} SD] forecast_sigs.len() = {}", entry, forecast_sigs.len());
-            println!("[{} SD] forecast_stock_sigs.len() = {}", entry, forecast_stock_sigs.len());
 
             plot_signals_with_forecast_svg(
                 &left_png,
@@ -210,8 +307,8 @@ async fn main() -> Result<()> {
                 &yb,
                 &stock_sigs,
                 &forecast_dates,
-                &forecast_A,
-                &forecast_B,
+                &forecast_a,
+                &forecast_b,
                 &forecast_stock_sigs,
             )?;
 
@@ -219,10 +316,17 @@ async fn main() -> Result<()> {
             pair_charts.push((format!("{} SD Prices", entry), right_png));
 
             // --- Backtest ---
-            // Use brokerage charge of 0.02% per leg per transition (0.0002)
+            // Notional=1.0, cost=0.02% (2 bps) per leg per position change
+            // -- see engine/backtest.rs for the full cost-model writeup.
+            // Note x/y here are the RAW price legs (not log prices): the
+            // signal that decides WHEN to trade comes from the log-space
+            // spread above, but the simulated dollar P&L from actually
+            // holding those positions is computed from real price changes,
+            // which is what backtest_pair expects.
             let mut bt = backtest_pair(x, y, &sigs, 1.0, 0.0002);
             bt.pair = (a.clone(), b.clone());
             bt.threshold = entry;
+            bt.half_life_bars = hl;
             pair_bts.push(bt);
         }
 
@@ -239,6 +343,30 @@ async fn main() -> Result<()> {
         )?;
         pair_charts.push(("Equity Curve".to_string(), equity_png));
 
+        // --- Strategy summary (position-sizing sanity check) -----------
+        // A simple parametric 95% Value-at-Risk figure (Jorion, "Value at
+        // Risk," standard risk-management reference): VaR_95% = 1.645 *
+        // sigma, where 1.645 is the 95th-percentile z-score of a standard
+        // normal distribution and sigma is the ONE-DAY dollar P&L standard
+        // deviation. `volatility` on BacktestResult is already this same
+        // number annualized (multiplied by sqrt(252) -- see engine/
+        // backtest.rs), so it's un-annualized here by dividing back out,
+        // rather than re-deriving a separate ad hoc "spread volatility" as
+        // an earlier version of this summary did (which mixed a raw-price,
+        // full-sample, look-ahead-biased spread statistic into an
+        // otherwise dollar-denominated risk figure -- inconsistent units,
+        // and inconsistent with the walk-forward spread used everywhere
+        // else above).
+        let primary = &pair_bts[0]; // 1.5 SD (the more active) threshold
+        let daily_dollar_vol = primary.volatility / 252.0_f64.sqrt();
+        let var_95 = 1.645 * daily_dollar_vol;
+        println!(
+            "{} / {} | side: mean-reversion | half-life: {} | daily P&L vol: {:.4} | VaR95 (1-day): {:.4}",
+            a, b,
+            hl.map(|h| format!("{:.1} bars", h)).unwrap_or_else(|| "n/a".to_string()),
+            daily_dollar_vol, var_95
+        );
+
         chart_groups.push((format!("{} / {}", a, b), pair_charts));
         results.extend(pair_bts);
     }
@@ -254,8 +382,9 @@ async fn main() -> Result<()> {
     println!("\nPairs ranked best to trade (by Sharpe ratio):");
     for (i, r) in results.iter().enumerate() {
         println!(
-            "{:>2}. {} / {} | entry={:.1}SD | rf={:.2}% | vol={:.4} | Sharpe={:.3} | MaxDD={:.4} | Cost={:.4} | NetPnL={:.4} | trades={}",
-            i + 1, r.pair.0, r.pair.1, r.threshold, r.risk_free_rate * 100.0, r.volatility, r.sharpe_ratio, r.max_drawdown, r.total_costs, r.total_pnl, r.trades
+            "{:>2}. {} / {} | entry={:.1}SD | rf={:.2}% | vol={:.4} | Sharpe={:.3} | Sortino={:.3} | MaxDD={:.4} | Cost={:.4} | NetPnL={:.4} | trades={}",
+            i + 1, r.pair.0, r.pair.1, r.threshold, r.risk_free_rate * 100.0, r.volatility,
+            r.sharpe_ratio, r.sortino_ratio, r.max_drawdown, r.total_costs, r.total_pnl, r.trades
         );
     }
 
@@ -283,29 +412,7 @@ async fn main() -> Result<()> {
     export_full_dashboard("output/dashboard.html", &ordered_chart_groups, &results)?;
     println!("Dashboard saved to output/dashboard.html");
 
-    // 10. Strategy summary
-    println!("\nStrategy summary:");
-    for (a, b, _, _) in &coint_pairs {
-        let xa = data.iter().find(|(n, _, _)| n == a).unwrap().1.clone();
-        let yb = data.iter().find(|(n, _, _)| n == b).unwrap().1.clone();
-        let n = xa.len().min(yb.len());
-        let (x, y) = (&xa[..n], &yb[..n]);
-
-        let (alpha, beta) = hedge_ratio_ols(x, y)?;
-        let spr = spread(alpha, beta, x, y);
-        let sd = std_spread(&spr);
-
-        let notional = 1.5*sd ;  // target 1.5 SD move in spread
-        let var_95 = 1.65 * notional;
-        let last_spread = *spr.last().unwrap();
-
-        println!(
-            "{} / {} | side: mean-reversion | notional: {:.2} | last_spread: {:.4} | VaR95: {:.4}",
-            a, b, notional, last_spread, var_95
-        );
-    }
-
-    // 11. Export backtests
+    // 10. Export backtests
     println!("About to write {} backtests to output/backtests_energy.csv", results.len());
     std::io::stdout().flush().ok();
     export_backtests("output/backtests_energy.csv", &results)?;

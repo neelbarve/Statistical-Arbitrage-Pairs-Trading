@@ -26,6 +26,11 @@
     .pair-group { margin-bottom: 30px; }
     .pair-group h2 { margin: 0 0 12px; font-size: 1.25rem; color: #f8fafc; border-bottom: 1px solid #23374f; padding-bottom: 8px; }
     .pair-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+    details.methodology { background: #10243b; border: 1px solid #23374f; border-radius: 14px; padding: 4px 20px 4px; margin-bottom: 20px; }
+    details.methodology summary { cursor: pointer; padding: 14px 0; font-weight: 600; color: #f8fafc; }
+    details.methodology p, details.methodology li { color: #b6c7dd; font-size: 0.92rem; line-height: 1.5; }
+    details.methodology ul { margin: 0 0 16px; padding-left: 20px; }
+    details.methodology code { background: #0d1c30; padding: 1px 5px; border-radius: 4px; font-size: 0.88em; }
   </style>
 </head>
 <body>
@@ -34,131 +39,52 @@
       <h1>Signal and price dashboard</h1>
       <p>Each pair's charts are grouped side by side below the ranking table, best pair first.</p>
     </section>
+    <details class="methodology">
+      <summary>Methodology &amp; references (click to expand)</summary>
+      <ul>
+        <li><b>Cointegration</b>: Engle-Granger two-step test on log prices, with proper Augmented Dickey-Fuller (AIC-selected lag order) and MacKinnon (2010) response-surface critical values -- tested in both regression directions, since Engle-Granger's finite-sample power isn't symmetric (Engle &amp; Granger, 1987, <i>Econometrica</i>; Chan, <i>Algorithmic Trading</i>, 2013).</li>
+        <li><b>Hedge ratio &amp; spread</b>: walk-forward OLS on log prices, refit on a trailing 252-bar (~1 year) window every 21 bars -- never fit on the whole history at once, which would let the model "see" future prices. Formation-period bars before the first full window are excluded from trading entirely.</li>
+        <li><b>Entry signal</b>: rolling z-score of the spread (10-day mean vs. 40-day mean, divided by the 40-day standard deviation) -- 1&nbsp;SD = 1 standard deviation of the spread over that trailing 40-day window. Entries at 1.5&nbsp;SD and 2.0&nbsp;SD, exits at 0.5&nbsp;SD.</li>
+        <li><b>Half-life</b>: Ornstein-Uhlenbeck mean-reversion half-life (Uhlenbeck &amp; Ornstein, 1930), estimated by regressing the spread's day-over-day change on its own lagged level. Pairs with no measurable mean reversion are excluded from trading even if they passed the cointegration test.</li>
+        <li><b>Sharpe / Sortino</b>: annualized (&times;&radic;252) from the backtest's own bar-by-bar P&amp;L, net of transaction costs, against a 4% annual risk-free rate. Sortino only penalizes downside deviations below that same hurdle (Sortino &amp; Price, 1994).</li>
+        <li><b>Where this project simplifies</b>: pair <i>selection</i> (which tickers are cointegrated) still uses the full price history rather than a periodically re-formed universe (Gatev, Goetzmann &amp; Rouwenhorst, 2006, use a rolling 12-month formation / 6-month trading cycle); only the traded hedge ratio is walk-forward. See <code>README.md</code> Assumptions &amp; Limitations for the full list, including where this project's choices diverge from one reference or another.</li>
+      </ul>
+    </details>
     <section>
       <h2>Pairs ranked best to trade (by Sharpe ratio)</h2>
       <div class="table-wrap">
       <table>
-        <thead><tr><th>Rank</th><th>Pair</th><th>Entry SD</th><th>Risk-Free Rate</th><th>Volatility</th><th>Sharpe</th><th>Max Drawdown</th><th>Transaction Cost</th><th>Net PnL</th><th>Trades</th></tr></thead>
+        <thead><tr><th>Rank</th><th>Pair</th><th>Entry SD</th><th>Half-Life (bars)</th><th>Risk-Free Rate</th><th>Volatility</th><th>Sharpe</th><th>Sortino</th><th>Max Drawdown</th><th>Transaction Cost</th><th>Net PnL</th><th>Trades</th></tr></thead>
         <tbody>
-          <tr><td>1</td><td>EOG / XOM</td><td>1.5</td><td>4.00%</td><td>2.0702</td><td>0.607</td><td>2.5469</td><td>0.0384</td><td class="pos">17.9906</td><td>48</td></tr>
-          <tr><td>2</td><td>SLB / APA</td><td>1.5</td><td>4.00%</td><td>1.6044</td><td>0.312</td><td>6.2414</td><td>0.0432</td><td class="pos">7.5018</td><td>54</td></tr>
-          <tr><td>3</td><td>DVN / FANG</td><td>1.5</td><td>4.00%</td><td>3.0500</td><td>0.258</td><td>10.1833</td><td>0.0376</td><td class="pos">11.4829</td><td>47</td></tr>
-          <tr><td>4</td><td>COP / FANG</td><td>1.5</td><td>4.00%</td><td>2.3203</td><td>0.181</td><td>4.2963</td><td>0.0432</td><td class="pos">6.3726</td><td>54</td></tr>
-          <tr><td>5</td><td>EOG / FANG</td><td>1.5</td><td>4.00%</td><td>2.6668</td><td>0.177</td><td>7.4006</td><td>0.0384</td><td class="pos">7.1200</td><td>48</td></tr>
-          <tr><td>6</td><td>HAL / APA</td><td>1.5</td><td>4.00%</td><td>1.2287</td><td>0.091</td><td>2.9023</td><td>0.0472</td><td class="pos">2.1023</td><td>59</td></tr>
-          <tr><td>7</td><td>XOM / FANG</td><td>1.5</td><td>4.00%</td><td>1.5372</td><td>0.088</td><td>4.1832</td><td>0.0288</td><td class="pos">2.4308</td><td>36</td></tr>
-          <tr><td>8</td><td>COP / FANG</td><td>2.0</td><td>4.00%</td><td>0.0000</td><td>0.000</td><td>0.0000</td><td>0.0000</td><td class="pos">0.0000</td><td>0</td></tr>
-          <tr><td>9</td><td>EOG / XOM</td><td>2.0</td><td>4.00%</td><td>0.0000</td><td>0.000</td><td>0.0000</td><td>0.0000</td><td class="pos">0.0000</td><td>0</td></tr>
-          <tr><td>10</td><td>EOG / FANG</td><td>2.0</td><td>4.00%</td><td>0.0000</td><td>0.000</td><td>0.0000</td><td>0.0000</td><td class="pos">0.0000</td><td>0</td></tr>
-          <tr><td>11</td><td>XOM / FANG</td><td>2.0</td><td>4.00%</td><td>0.0000</td><td>0.000</td><td>0.0000</td><td>0.0000</td><td class="pos">0.0000</td><td>0</td></tr>
-          <tr><td>12</td><td>CVX / MPC</td><td>2.0</td><td>4.00%</td><td>0.0000</td><td>0.000</td><td>0.0000</td><td>0.0000</td><td class="pos">0.0000</td><td>0</td></tr>
-          <tr><td>13</td><td>CVX / FANG</td><td>2.0</td><td>4.00%</td><td>0.0000</td><td>0.000</td><td>0.0000</td><td>0.0000</td><td class="pos">0.0000</td><td>0</td></tr>
-          <tr><td>14</td><td>SLB / HAL</td><td>2.0</td><td>4.00%</td><td>0.0000</td><td>0.000</td><td>0.0000</td><td>0.0000</td><td class="pos">0.0000</td><td>0</td></tr>
-          <tr><td>15</td><td>SLB / APA</td><td>2.0</td><td>4.00%</td><td>0.0000</td><td>0.000</td><td>0.0000</td><td>0.0000</td><td class="pos">0.0000</td><td>0</td></tr>
-          <tr><td>16</td><td>MPC / PSX</td><td>2.0</td><td>4.00%</td><td>0.0000</td><td>0.000</td><td>0.0000</td><td>0.0000</td><td class="pos">0.0000</td><td>0</td></tr>
-          <tr><td>17</td><td>PSX / VLO</td><td>2.0</td><td>4.00%</td><td>0.0000</td><td>0.000</td><td>0.0000</td><td>0.0000</td><td class="pos">0.0000</td><td>0</td></tr>
-          <tr><td>18</td><td>HAL / APA</td><td>2.0</td><td>4.00%</td><td>0.0000</td><td>0.000</td><td>0.0000</td><td>0.0000</td><td class="pos">0.0000</td><td>0</td></tr>
-          <tr><td>19</td><td>DVN / FANG</td><td>2.0</td><td>4.00%</td><td>0.0000</td><td>0.000</td><td>0.0000</td><td>0.0000</td><td class="pos">0.0000</td><td>0</td></tr>
-          <tr><td>20</td><td>CVX / FANG</td><td>1.5</td><td>4.00%</td><td>4.1806</td><td>-0.047</td><td>18.8277</td><td>0.0472</td><td class="neg">-2.1976</td><td>59</td></tr>
-          <tr><td>21</td><td>CVX / MPC</td><td>1.5</td><td>4.00%</td><td>4.3308</td><td>-0.119</td><td>19.8911</td><td>0.0384</td><td class="neg">-6.5850</td><td>48</td></tr>
-          <tr><td>22</td><td>MPC / PSX</td><td>1.5</td><td>4.00%</td><td>2.0801</td><td>-0.177</td><td>8.8872</td><td>0.0376</td><td class="neg">-4.5468</td><td>47</td></tr>
-          <tr><td>23</td><td>PSX / VLO</td><td>1.5</td><td>4.00%</td><td>2.5979</td><td>-0.243</td><td>11.9832</td><td>0.0368</td><td class="neg">-8.2134</td><td>46</td></tr>
-          <tr><td>24</td><td>SLB / HAL</td><td>1.5</td><td>4.00%</td><td>1.0698</td><td>-0.610</td><td>9.4672</td><td>0.0464</td><td class="neg">-8.4929</td><td>58</td></tr>
+          <tr><td>1</td><td>COP / FANG</td><td>1.5</td><td>38.9</td><td>4.00%</td><td>3.2541</td><td>0.379</td><td>0.940</td><td>5.3602</td><td>0.0432</td><td class="pos">16.3959</td><td>54</td></tr>
+          <tr><td>2</td><td>CVX / FANG</td><td>1.5</td><td>29.2</td><td>4.00%</td><td>4.3121</td><td>0.294</td><td>0.559</td><td>9.6431</td><td>0.0432</td><td class="pos">16.8298</td><td>54</td></tr>
+          <tr><td>3</td><td>COP / FANG</td><td>2.0</td><td>38.9</td><td>4.00%</td><td>0.0000</td><td>0.000</td><td>0.000</td><td>0.0000</td><td>0.0000</td><td class="pos">0.0000</td><td>0</td></tr>
+          <tr><td>4</td><td>EOG / XOM</td><td>2.0</td><td>39.9</td><td>4.00%</td><td>0.0000</td><td>0.000</td><td>0.000</td><td>0.0000</td><td>0.0000</td><td class="pos">0.0000</td><td>0</td></tr>
+          <tr><td>5</td><td>EOG / FANG</td><td>2.0</td><td>26.5</td><td>4.00%</td><td>0.0000</td><td>0.000</td><td>0.000</td><td>0.0000</td><td>0.0000</td><td class="pos">0.0000</td><td>0</td></tr>
+          <tr><td>6</td><td>XOM / FANG</td><td>2.0</td><td>37.2</td><td>4.00%</td><td>0.0000</td><td>0.000</td><td>0.000</td><td>0.0000</td><td>0.0000</td><td class="pos">0.0000</td><td>0</td></tr>
+          <tr><td>7</td><td>CVX / MPC</td><td>2.0</td><td>28.4</td><td>4.00%</td><td>0.0000</td><td>0.000</td><td>0.000</td><td>0.0000</td><td>0.0000</td><td class="pos">0.0000</td><td>0</td></tr>
+          <tr><td>8</td><td>CVX / FANG</td><td>2.0</td><td>29.2</td><td>4.00%</td><td>0.0000</td><td>0.000</td><td>0.000</td><td>0.0000</td><td>0.0000</td><td class="pos">0.0000</td><td>0</td></tr>
+          <tr><td>9</td><td>SLB / HAL</td><td>2.0</td><td>54.3</td><td>4.00%</td><td>0.0000</td><td>0.000</td><td>0.000</td><td>0.0000</td><td>0.0000</td><td class="pos">0.0000</td><td>0</td></tr>
+          <tr><td>10</td><td>SLB / APA</td><td>2.0</td><td>42.4</td><td>4.00%</td><td>0.0000</td><td>0.000</td><td>0.000</td><td>0.0000</td><td>0.0000</td><td class="pos">0.0000</td><td>0</td></tr>
+          <tr><td>11</td><td>MPC / PSX</td><td>2.0</td><td>63.5</td><td>4.00%</td><td>0.0000</td><td>0.000</td><td>0.000</td><td>0.0000</td><td>0.0000</td><td class="pos">0.0000</td><td>0</td></tr>
+          <tr><td>12</td><td>PSX / VLO</td><td>2.0</td><td>35.2</td><td>4.00%</td><td>0.0000</td><td>0.000</td><td>0.000</td><td>0.0000</td><td>0.0000</td><td class="pos">0.0000</td><td>0</td></tr>
+          <tr><td>13</td><td>HAL / APA</td><td>2.0</td><td>42.4</td><td>4.00%</td><td>0.0000</td><td>0.000</td><td>0.000</td><td>0.0000</td><td>0.0000</td><td class="pos">0.0000</td><td>0</td></tr>
+          <tr><td>14</td><td>DVN / FANG</td><td>2.0</td><td>65.5</td><td>4.00%</td><td>0.0000</td><td>0.000</td><td>0.000</td><td>0.0000</td><td>0.0000</td><td class="pos">0.0000</td><td>0</td></tr>
+          <tr><td>15</td><td>SLB / HAL</td><td>1.5</td><td>54.3</td><td>4.00%</td><td>0.7276</td><td>-0.046</td><td>-0.068</td><td>1.4431</td><td>0.0328</td><td class="pos">0.0845</td><td>41</td></tr>
+          <tr><td>16</td><td>MPC / PSX</td><td>1.5</td><td>63.5</td><td>4.00%</td><td>3.5183</td><td>-0.056</td><td>-0.112</td><td>12.5428</td><td>0.0384</td><td class="neg">-2.0328</td><td>48</td></tr>
+          <tr><td>17</td><td>EOG / FANG</td><td>1.5</td><td>26.5</td><td>4.00%</td><td>2.8718</td><td>-0.066</td><td>-0.081</td><td>12.9497</td><td>0.0288</td><td class="neg">-1.9204</td><td>36</td></tr>
+          <tr><td>18</td><td>EOG / XOM</td><td>1.5</td><td>39.9</td><td>4.00%</td><td>1.8962</td><td>-0.169</td><td>-0.214</td><td>7.1771</td><td>0.0328</td><td class="neg">-3.6132</td><td>41</td></tr>
+          <tr><td>19</td><td>PSX / VLO</td><td>1.5</td><td>35.2</td><td>4.00%</td><td>1.8902</td><td>-0.306</td><td>-0.350</td><td>14.0062</td><td>0.0352</td><td class="neg">-6.9197</td><td>44</td></tr>
+          <tr><td>20</td><td>DVN / FANG</td><td>1.5</td><td>65.5</td><td>4.00%</td><td>3.8287</td><td>-0.317</td><td>-0.375</td><td>22.8250</td><td>0.0312</td><td class="neg">-15.0957</td><td>39</td></tr>
+          <tr><td>21</td><td>CVX / MPC</td><td>1.5</td><td>28.4</td><td>4.00%</td><td>4.8026</td><td>-0.347</td><td>-0.389</td><td>30.2089</td><td>0.0400</td><td class="neg">-20.9310</td><td>50</td></tr>
+          <tr><td>22</td><td>XOM / FANG</td><td>1.5</td><td>37.2</td><td>4.00%</td><td>3.3915</td><td>-0.395</td><td>-0.479</td><td>16.8653</td><td>0.0344</td><td class="neg">-16.7240</td><td>43</td></tr>
+          <tr><td>23</td><td>HAL / APA</td><td>1.5</td><td>42.4</td><td>4.00%</td><td>1.3815</td><td>-0.424</td><td>-0.521</td><td>10.5260</td><td>0.0448</td><td class="neg">-7.0316</td><td>56</td></tr>
+          <tr><td>24</td><td>SLB / APA</td><td>1.5</td><td>42.4</td><td>4.00%</td><td>1.7699</td><td>-0.738</td><td>-0.813</td><td>16.7856</td><td>0.0456</td><td class="neg">-16.2987</td><td>57</td></tr>
         </tbody>
       </table>
       </div>
     </section>
     <section>
-      <div class="pair-group">
-        <h2>EOG / XOM</h2>
-        <div class="pair-row">
-          <article class="card">
-            <h3>1.5 SD Signals</h3>
-            <img src="EOG_XOM_1_5sd_signals.png" alt="EOG / XOM 1.5 SD Signals">
-            <div class="meta">EOG_XOM_1_5sd_signals.png</div>
-          </article>
-          <article class="card">
-            <h3>1.5 SD Prices</h3>
-            <img src="EOG_XOM_1_5sd_prices.png" alt="EOG / XOM 1.5 SD Prices">
-            <div class="meta">EOG_XOM_1_5sd_prices.png</div>
-          </article>
-          <article class="card">
-            <h3>2 SD Signals</h3>
-            <img src="EOG_XOM_2sd_signals.png" alt="EOG / XOM 2 SD Signals">
-            <div class="meta">EOG_XOM_2sd_signals.png</div>
-          </article>
-          <article class="card">
-            <h3>2 SD Prices</h3>
-            <img src="EOG_XOM_2sd_prices.png" alt="EOG / XOM 2 SD Prices">
-            <div class="meta">EOG_XOM_2sd_prices.png</div>
-          </article>
-          <article class="card">
-            <h3>Equity Curve</h3>
-            <img src="EOG_XOM_equity.png" alt="EOG / XOM Equity Curve">
-            <div class="meta">EOG_XOM_equity.png</div>
-          </article>
-        </div>
-      </div>
-      <div class="pair-group">
-        <h2>SLB / APA</h2>
-        <div class="pair-row">
-          <article class="card">
-            <h3>1.5 SD Signals</h3>
-            <img src="SLB_APA_1_5sd_signals.png" alt="SLB / APA 1.5 SD Signals">
-            <div class="meta">SLB_APA_1_5sd_signals.png</div>
-          </article>
-          <article class="card">
-            <h3>1.5 SD Prices</h3>
-            <img src="SLB_APA_1_5sd_prices.png" alt="SLB / APA 1.5 SD Prices">
-            <div class="meta">SLB_APA_1_5sd_prices.png</div>
-          </article>
-          <article class="card">
-            <h3>2 SD Signals</h3>
-            <img src="SLB_APA_2sd_signals.png" alt="SLB / APA 2 SD Signals">
-            <div class="meta">SLB_APA_2sd_signals.png</div>
-          </article>
-          <article class="card">
-            <h3>2 SD Prices</h3>
-            <img src="SLB_APA_2sd_prices.png" alt="SLB / APA 2 SD Prices">
-            <div class="meta">SLB_APA_2sd_prices.png</div>
-          </article>
-          <article class="card">
-            <h3>Equity Curve</h3>
-            <img src="SLB_APA_equity.png" alt="SLB / APA Equity Curve">
-            <div class="meta">SLB_APA_equity.png</div>
-          </article>
-        </div>
-      </div>
-      <div class="pair-group">
-        <h2>DVN / FANG</h2>
-        <div class="pair-row">
-          <article class="card">
-            <h3>1.5 SD Signals</h3>
-            <img src="DVN_FANG_1_5sd_signals.png" alt="DVN / FANG 1.5 SD Signals">
-            <div class="meta">DVN_FANG_1_5sd_signals.png</div>
-          </article>
-          <article class="card">
-            <h3>1.5 SD Prices</h3>
-            <img src="DVN_FANG_1_5sd_prices.png" alt="DVN / FANG 1.5 SD Prices">
-            <div class="meta">DVN_FANG_1_5sd_prices.png</div>
-          </article>
-          <article class="card">
-            <h3>2 SD Signals</h3>
-            <img src="DVN_FANG_2sd_signals.png" alt="DVN / FANG 2 SD Signals">
-            <div class="meta">DVN_FANG_2sd_signals.png</div>
-          </article>
-          <article class="card">
-            <h3>2 SD Prices</h3>
-            <img src="DVN_FANG_2sd_prices.png" alt="DVN / FANG 2 SD Prices">
-            <div class="meta">DVN_FANG_2sd_prices.png</div>
-          </article>
-          <article class="card">
-            <h3>Equity Curve</h3>
-            <img src="DVN_FANG_equity.png" alt="DVN / FANG Equity Curve">
-            <div class="meta">DVN_FANG_equity.png</div>
-          </article>
-        </div>
-      </div>
       <div class="pair-group">
         <h2>COP / FANG</h2>
         <div class="pair-row">
@@ -190,6 +116,66 @@
         </div>
       </div>
       <div class="pair-group">
+        <h2>CVX / FANG</h2>
+        <div class="pair-row">
+          <article class="card">
+            <h3>1.5 SD Signals</h3>
+            <img src="CVX_FANG_1_5sd_signals.png" alt="CVX / FANG 1.5 SD Signals">
+            <div class="meta">CVX_FANG_1_5sd_signals.png</div>
+          </article>
+          <article class="card">
+            <h3>1.5 SD Prices</h3>
+            <img src="CVX_FANG_1_5sd_prices.png" alt="CVX / FANG 1.5 SD Prices">
+            <div class="meta">CVX_FANG_1_5sd_prices.png</div>
+          </article>
+          <article class="card">
+            <h3>2 SD Signals</h3>
+            <img src="CVX_FANG_2sd_signals.png" alt="CVX / FANG 2 SD Signals">
+            <div class="meta">CVX_FANG_2sd_signals.png</div>
+          </article>
+          <article class="card">
+            <h3>2 SD Prices</h3>
+            <img src="CVX_FANG_2sd_prices.png" alt="CVX / FANG 2 SD Prices">
+            <div class="meta">CVX_FANG_2sd_prices.png</div>
+          </article>
+          <article class="card">
+            <h3>Equity Curve</h3>
+            <img src="CVX_FANG_equity.png" alt="CVX / FANG Equity Curve">
+            <div class="meta">CVX_FANG_equity.png</div>
+          </article>
+        </div>
+      </div>
+      <div class="pair-group">
+        <h2>EOG / XOM</h2>
+        <div class="pair-row">
+          <article class="card">
+            <h3>1.5 SD Signals</h3>
+            <img src="EOG_XOM_1_5sd_signals.png" alt="EOG / XOM 1.5 SD Signals">
+            <div class="meta">EOG_XOM_1_5sd_signals.png</div>
+          </article>
+          <article class="card">
+            <h3>1.5 SD Prices</h3>
+            <img src="EOG_XOM_1_5sd_prices.png" alt="EOG / XOM 1.5 SD Prices">
+            <div class="meta">EOG_XOM_1_5sd_prices.png</div>
+          </article>
+          <article class="card">
+            <h3>2 SD Signals</h3>
+            <img src="EOG_XOM_2sd_signals.png" alt="EOG / XOM 2 SD Signals">
+            <div class="meta">EOG_XOM_2sd_signals.png</div>
+          </article>
+          <article class="card">
+            <h3>2 SD Prices</h3>
+            <img src="EOG_XOM_2sd_prices.png" alt="EOG / XOM 2 SD Prices">
+            <div class="meta">EOG_XOM_2sd_prices.png</div>
+          </article>
+          <article class="card">
+            <h3>Equity Curve</h3>
+            <img src="EOG_XOM_equity.png" alt="EOG / XOM Equity Curve">
+            <div class="meta">EOG_XOM_equity.png</div>
+          </article>
+        </div>
+      </div>
+      <div class="pair-group">
         <h2>EOG / FANG</h2>
         <div class="pair-row">
           <article class="card">
@@ -216,36 +202,6 @@
             <h3>Equity Curve</h3>
             <img src="EOG_FANG_equity.png" alt="EOG / FANG Equity Curve">
             <div class="meta">EOG_FANG_equity.png</div>
-          </article>
-        </div>
-      </div>
-      <div class="pair-group">
-        <h2>HAL / APA</h2>
-        <div class="pair-row">
-          <article class="card">
-            <h3>1.5 SD Signals</h3>
-            <img src="HAL_APA_1_5sd_signals.png" alt="HAL / APA 1.5 SD Signals">
-            <div class="meta">HAL_APA_1_5sd_signals.png</div>
-          </article>
-          <article class="card">
-            <h3>1.5 SD Prices</h3>
-            <img src="HAL_APA_1_5sd_prices.png" alt="HAL / APA 1.5 SD Prices">
-            <div class="meta">HAL_APA_1_5sd_prices.png</div>
-          </article>
-          <article class="card">
-            <h3>2 SD Signals</h3>
-            <img src="HAL_APA_2sd_signals.png" alt="HAL / APA 2 SD Signals">
-            <div class="meta">HAL_APA_2sd_signals.png</div>
-          </article>
-          <article class="card">
-            <h3>2 SD Prices</h3>
-            <img src="HAL_APA_2sd_prices.png" alt="HAL / APA 2 SD Prices">
-            <div class="meta">HAL_APA_2sd_prices.png</div>
-          </article>
-          <article class="card">
-            <h3>Equity Curve</h3>
-            <img src="HAL_APA_equity.png" alt="HAL / APA Equity Curve">
-            <div class="meta">HAL_APA_equity.png</div>
           </article>
         </div>
       </div>
@@ -310,36 +266,6 @@
         </div>
       </div>
       <div class="pair-group">
-        <h2>CVX / FANG</h2>
-        <div class="pair-row">
-          <article class="card">
-            <h3>1.5 SD Signals</h3>
-            <img src="CVX_FANG_1_5sd_signals.png" alt="CVX / FANG 1.5 SD Signals">
-            <div class="meta">CVX_FANG_1_5sd_signals.png</div>
-          </article>
-          <article class="card">
-            <h3>1.5 SD Prices</h3>
-            <img src="CVX_FANG_1_5sd_prices.png" alt="CVX / FANG 1.5 SD Prices">
-            <div class="meta">CVX_FANG_1_5sd_prices.png</div>
-          </article>
-          <article class="card">
-            <h3>2 SD Signals</h3>
-            <img src="CVX_FANG_2sd_signals.png" alt="CVX / FANG 2 SD Signals">
-            <div class="meta">CVX_FANG_2sd_signals.png</div>
-          </article>
-          <article class="card">
-            <h3>2 SD Prices</h3>
-            <img src="CVX_FANG_2sd_prices.png" alt="CVX / FANG 2 SD Prices">
-            <div class="meta">CVX_FANG_2sd_prices.png</div>
-          </article>
-          <article class="card">
-            <h3>Equity Curve</h3>
-            <img src="CVX_FANG_equity.png" alt="CVX / FANG Equity Curve">
-            <div class="meta">CVX_FANG_equity.png</div>
-          </article>
-        </div>
-      </div>
-      <div class="pair-group">
         <h2>SLB / HAL</h2>
         <div class="pair-row">
           <article class="card">
@@ -366,6 +292,36 @@
             <h3>Equity Curve</h3>
             <img src="SLB_HAL_equity.png" alt="SLB / HAL Equity Curve">
             <div class="meta">SLB_HAL_equity.png</div>
+          </article>
+        </div>
+      </div>
+      <div class="pair-group">
+        <h2>SLB / APA</h2>
+        <div class="pair-row">
+          <article class="card">
+            <h3>1.5 SD Signals</h3>
+            <img src="SLB_APA_1_5sd_signals.png" alt="SLB / APA 1.5 SD Signals">
+            <div class="meta">SLB_APA_1_5sd_signals.png</div>
+          </article>
+          <article class="card">
+            <h3>1.5 SD Prices</h3>
+            <img src="SLB_APA_1_5sd_prices.png" alt="SLB / APA 1.5 SD Prices">
+            <div class="meta">SLB_APA_1_5sd_prices.png</div>
+          </article>
+          <article class="card">
+            <h3>2 SD Signals</h3>
+            <img src="SLB_APA_2sd_signals.png" alt="SLB / APA 2 SD Signals">
+            <div class="meta">SLB_APA_2sd_signals.png</div>
+          </article>
+          <article class="card">
+            <h3>2 SD Prices</h3>
+            <img src="SLB_APA_2sd_prices.png" alt="SLB / APA 2 SD Prices">
+            <div class="meta">SLB_APA_2sd_prices.png</div>
+          </article>
+          <article class="card">
+            <h3>Equity Curve</h3>
+            <img src="SLB_APA_equity.png" alt="SLB / APA Equity Curve">
+            <div class="meta">SLB_APA_equity.png</div>
           </article>
         </div>
       </div>
@@ -426,6 +382,66 @@
             <h3>Equity Curve</h3>
             <img src="PSX_VLO_equity.png" alt="PSX / VLO Equity Curve">
             <div class="meta">PSX_VLO_equity.png</div>
+          </article>
+        </div>
+      </div>
+      <div class="pair-group">
+        <h2>HAL / APA</h2>
+        <div class="pair-row">
+          <article class="card">
+            <h3>1.5 SD Signals</h3>
+            <img src="HAL_APA_1_5sd_signals.png" alt="HAL / APA 1.5 SD Signals">
+            <div class="meta">HAL_APA_1_5sd_signals.png</div>
+          </article>
+          <article class="card">
+            <h3>1.5 SD Prices</h3>
+            <img src="HAL_APA_1_5sd_prices.png" alt="HAL / APA 1.5 SD Prices">
+            <div class="meta">HAL_APA_1_5sd_prices.png</div>
+          </article>
+          <article class="card">
+            <h3>2 SD Signals</h3>
+            <img src="HAL_APA_2sd_signals.png" alt="HAL / APA 2 SD Signals">
+            <div class="meta">HAL_APA_2sd_signals.png</div>
+          </article>
+          <article class="card">
+            <h3>2 SD Prices</h3>
+            <img src="HAL_APA_2sd_prices.png" alt="HAL / APA 2 SD Prices">
+            <div class="meta">HAL_APA_2sd_prices.png</div>
+          </article>
+          <article class="card">
+            <h3>Equity Curve</h3>
+            <img src="HAL_APA_equity.png" alt="HAL / APA Equity Curve">
+            <div class="meta">HAL_APA_equity.png</div>
+          </article>
+        </div>
+      </div>
+      <div class="pair-group">
+        <h2>DVN / FANG</h2>
+        <div class="pair-row">
+          <article class="card">
+            <h3>1.5 SD Signals</h3>
+            <img src="DVN_FANG_1_5sd_signals.png" alt="DVN / FANG 1.5 SD Signals">
+            <div class="meta">DVN_FANG_1_5sd_signals.png</div>
+          </article>
+          <article class="card">
+            <h3>1.5 SD Prices</h3>
+            <img src="DVN_FANG_1_5sd_prices.png" alt="DVN / FANG 1.5 SD Prices">
+            <div class="meta">DVN_FANG_1_5sd_prices.png</div>
+          </article>
+          <article class="card">
+            <h3>2 SD Signals</h3>
+            <img src="DVN_FANG_2sd_signals.png" alt="DVN / FANG 2 SD Signals">
+            <div class="meta">DVN_FANG_2sd_signals.png</div>
+          </article>
+          <article class="card">
+            <h3>2 SD Prices</h3>
+            <img src="DVN_FANG_2sd_prices.png" alt="DVN / FANG 2 SD Prices">
+            <div class="meta">DVN_FANG_2sd_prices.png</div>
+          </article>
+          <article class="card">
+            <h3>Equity Curve</h3>
+            <img src="DVN_FANG_equity.png" alt="DVN / FANG Equity Curve">
+            <div class="meta">DVN_FANG_equity.png</div>
           </article>
         </div>
       </div>

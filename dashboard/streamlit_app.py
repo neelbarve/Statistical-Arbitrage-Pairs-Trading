@@ -42,7 +42,11 @@ def tag_to_threshold(tag: str) -> float:
 
 @st.cache_data(show_spinner=False)
 def load_results(csv_mtime: float) -> pd.DataFrame:
-    df = pd.read_csv(CSV_PATH)
+    # half_life_bars is "n/a" (text) for the rare case a pair reached the
+    # CSV without a measurable half-life -- shouldn't normally happen since
+    # main.rs skips such pairs before they're ever backtested, but treat it
+    # as a proper missing value (NaN) rather than a stray string either way.
+    df = pd.read_csv(CSV_PATH, na_values=["n/a"])
     df["pair"] = df["stock1"] + " / " + df["stock2"]
     return df
 
@@ -110,6 +114,33 @@ st.caption(
     "and their backtest results. Data comes from `output/`, written by `cargo run --release`."
 )
 
+with st.expander("Methodology & references"):
+    st.markdown(
+        """
+- **Cointegration**: Engle-Granger two-step test on log prices (proper Augmented Dickey-Fuller,
+  AIC-selected lag order, real MacKinnon (2010) critical values), tested in **both** regression
+  directions since the test's power isn't symmetric in finite samples (Engle & Granger, 1987,
+  *Econometrica*; Chan, *Algorithmic Trading*, 2013).
+- **Hedge ratio & spread**: **walk-forward** OLS on log prices, refit on a trailing 252-bar
+  (~1 year) window every 21 bars — never fit on the whole history at once, which would let the
+  model "see" future prices. The formation period (first 252 bars) is excluded from trading.
+- **Entry signal**: rolling z-score of the spread (10-day mean vs. 40-day mean, divided by the
+  40-day standard deviation) — **1 SD = 1 standard deviation of the spread over that trailing
+  40-day window**. Entries at 1.5 SD / 2.0 SD, exits at 0.5 SD.
+- **Half-life**: Ornstein-Uhlenbeck mean-reversion half-life (Uhlenbeck & Ornstein, 1930),
+  estimated by regressing the spread's day-over-day change on its own lagged level. Pairs with
+  no measurable mean reversion are excluded from trading even if they passed cointegration.
+- **Sharpe / Sortino**: annualized (×√252) from the backtest's own bar-by-bar P&L, net of
+  transaction costs, against a fixed annual risk-free rate. Sortino only penalizes downside
+  deviations below that same hurdle (Sortino & Price, 1994).
+- **Where this simplifies**: pair *selection* (which tickers are cointegrated) still uses the
+  full price history rather than a periodically re-formed universe (Gatev, Goetzmann &
+  Rouwenhorst, 2006, use a rolling 12-month formation / 6-month trading cycle) — only the
+  *traded* hedge ratio is walk-forward. See `README.md` for the full write-up, including every
+  place this project's choices diverge from one reference or another and why.
+        """
+    )
+
 with st.sidebar:
     st.header("Data")
     if CSV_PATH.exists():
@@ -157,9 +188,11 @@ display_cols = {
     "rank": "Rank",
     "pair": "Pair",
     "entry_threshold_sd": "Entry SD",
+    "half_life_bars": "Half-Life (bars)",
     "risk_free_rate": "Risk-Free Rate",
     "volatility": "Volatility",
     "sharpe_ratio": "Sharpe",
+    "sortino_ratio": "Sortino",
     "max_drawdown": "Max Drawdown",
     "total_costs": "Transaction Cost",
     "net_pnl": "Net PnL",
@@ -167,13 +200,21 @@ display_cols = {
 }
 table = filtered[list(display_cols)].rename(columns=display_cols)
 
+def _na_or(fmt):
+    # pandas Styler.format callables receive the raw (possibly-NaN) cell
+    # value -- render a missing half-life as "n/a" instead of the string
+    # "nan", which would otherwise look like a bug in the table.
+    return lambda v: "n/a" if pd.isna(v) else fmt.format(v)
+
 styled = table.style.map(
     lambda v: "color: #16a34a" if v >= 0 else "color: #dc2626", subset=["Net PnL"]
 ).format({
     "Entry SD": "{:.1f}".format,
+    "Half-Life (bars)": _na_or("{:.1f}"),
     "Risk-Free Rate": "{:.2%}".format,
     "Volatility": "{:.4f}".format,
     "Sharpe": "{:.3f}".format,
+    "Sortino": "{:.3f}".format,
     "Max Drawdown": "{:.4f}".format,
     "Transaction Cost": "{:.4f}".format,
     "Net PnL": "{:.4f}".format,
@@ -197,8 +238,9 @@ for i, pair_label in enumerate(ranked_pairs):
     if not charts:
         continue
     row = filtered[filtered["pair"] == pair_label].iloc[0]
+    half_life_label = "n/a" if pd.isna(row["half_life_bars"]) else f"{row['half_life_bars']:.1f} bars"
     with st.expander(
-        f"#{int(row['rank'])} — {pair_label} — Sharpe {row['sharpe_ratio']:.3f}",
+        f"#{int(row['rank'])} — {pair_label} — Sharpe {row['sharpe_ratio']:.3f} — half-life {half_life_label}",
         expanded=(i < 3),
     ):
         cols = st.columns(len(charts))

@@ -112,6 +112,11 @@ pub fn export_full_dashboard(
     // wrap onto a new line -- rather than shrinking below readable size --
     // once the viewport can't fit them all in one row.
     writeln!(file, "    .pair-row {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }}")?;
+    writeln!(file, "    details.methodology {{ background: #10243b; border: 1px solid #23374f; border-radius: 14px; padding: 4px 20px 4px; margin-bottom: 20px; }}")?;
+    writeln!(file, "    details.methodology summary {{ cursor: pointer; padding: 14px 0; font-weight: 600; color: #f8fafc; }}")?;
+    writeln!(file, "    details.methodology p, details.methodology li {{ color: #b6c7dd; font-size: 0.92rem; line-height: 1.5; }}")?;
+    writeln!(file, "    details.methodology ul {{ margin: 0 0 16px; padding-left: 20px; }}")?;
+    writeln!(file, "    details.methodology code {{ background: #0d1c30; padding: 1px 5px; border-radius: 4px; font-size: 0.88em; }}")?;
     writeln!(file, "  </style>")?;
     writeln!(file, "</head>")?;
     writeln!(file, "<body>")?;
@@ -121,25 +126,43 @@ pub fn export_full_dashboard(
     writeln!(file, "      <p>Each pair's charts are grouped side by side below the ranking table, best pair first.</p>")?;
     writeln!(file, "    </section>")?;
 
+    writeln!(file, "    <details class=\"methodology\">")?;
+    writeln!(file, "      <summary>Methodology &amp; references (click to expand)</summary>")?;
+    writeln!(file, "      <ul>")?;
+    writeln!(file, "        <li><b>Cointegration</b>: Engle-Granger two-step test on log prices, with proper Augmented Dickey-Fuller (AIC-selected lag order) and MacKinnon (2010) response-surface critical values -- tested in both regression directions, since Engle-Granger's finite-sample power isn't symmetric (Engle &amp; Granger, 1987, <i>Econometrica</i>; Chan, <i>Algorithmic Trading</i>, 2013).</li>")?;
+    writeln!(file, "        <li><b>Hedge ratio &amp; spread</b>: walk-forward OLS on log prices, refit on a trailing 252-bar (~1 year) window every 21 bars -- never fit on the whole history at once, which would let the model \"see\" future prices. Formation-period bars before the first full window are excluded from trading entirely.</li>")?;
+    writeln!(file, "        <li><b>Entry signal</b>: rolling z-score of the spread (10-day mean vs. 40-day mean, divided by the 40-day standard deviation) -- 1&nbsp;SD = 1 standard deviation of the spread over that trailing 40-day window. Entries at 1.5&nbsp;SD and 2.0&nbsp;SD, exits at 0.5&nbsp;SD.</li>")?;
+    writeln!(file, "        <li><b>Half-life</b>: Ornstein-Uhlenbeck mean-reversion half-life (Uhlenbeck &amp; Ornstein, 1930), estimated by regressing the spread's day-over-day change on its own lagged level. Pairs with no measurable mean reversion are excluded from trading even if they passed the cointegration test.</li>")?;
+    writeln!(file, "        <li><b>Sharpe / Sortino</b>: annualized (&times;&radic;252) from the backtest's own bar-by-bar P&amp;L, net of transaction costs, against a {:.0}% annual risk-free rate. Sortino only penalizes downside deviations below that same hurdle (Sortino &amp; Price, 1994).</li>", rankings.first().map(|r| r.risk_free_rate * 100.0).unwrap_or(4.0))?;
+    writeln!(file, "        <li><b>Where this project simplifies</b>: pair <i>selection</i> (which tickers are cointegrated) still uses the full price history rather than a periodically re-formed universe (Gatev, Goetzmann &amp; Rouwenhorst, 2006, use a rolling 12-month formation / 6-month trading cycle); only the traded hedge ratio is walk-forward. See <code>README.md</code> Assumptions &amp; Limitations for the full list, including where this project's choices diverge from one reference or another.</li>")?;
+    writeln!(file, "      </ul>")?;
+    writeln!(file, "    </details>")?;
+
     if !rankings.is_empty() {
         writeln!(file, "    <section>")?;
         writeln!(file, "      <h2>Pairs ranked best to trade (by Sharpe ratio)</h2>")?;
         writeln!(file, "      <div class=\"table-wrap\">")?;
         writeln!(file, "      <table>")?;
-        writeln!(file, "        <thead><tr><th>Rank</th><th>Pair</th><th>Entry SD</th><th>Risk-Free Rate</th><th>Volatility</th><th>Sharpe</th><th>Max Drawdown</th><th>Transaction Cost</th><th>Net PnL</th><th>Trades</th></tr></thead>")?;
+        writeln!(file, "        <thead><tr><th>Rank</th><th>Pair</th><th>Entry SD</th><th>Half-Life (bars)</th><th>Risk-Free Rate</th><th>Volatility</th><th>Sharpe</th><th>Sortino</th><th>Max Drawdown</th><th>Transaction Cost</th><th>Net PnL</th><th>Trades</th></tr></thead>")?;
         writeln!(file, "        <tbody>")?;
         for (i, r) in rankings.iter().enumerate() {
             let pnl_class = if r.total_pnl >= 0.0 { "pos" } else { "neg" };
+            let half_life_str = match r.half_life_bars {
+                Some(h) => format!("{:.1}", h),
+                None => "n/a".to_string(),
+            };
             writeln!(
                 file,
-                "          <tr><td>{}</td><td>{} / {}</td><td>{:.1}</td><td>{:.2}%</td><td>{:.4}</td><td>{:.3}</td><td>{:.4}</td><td>{:.4}</td><td class=\"{}\">{:.4}</td><td>{}</td></tr>",
+                "          <tr><td>{}</td><td>{} / {}</td><td>{:.1}</td><td>{}</td><td>{:.2}%</td><td>{:.4}</td><td>{:.3}</td><td>{:.3}</td><td>{:.4}</td><td>{:.4}</td><td class=\"{}\">{:.4}</td><td>{}</td></tr>",
                 i + 1,
                 r.pair.0,
                 r.pair.1,
                 r.threshold,
+                half_life_str,
                 r.risk_free_rate * 100.0,
                 r.volatility,
                 r.sharpe_ratio,
+                r.sortino_ratio,
                 r.max_drawdown,
                 r.total_costs,
                 pnl_class,
@@ -232,6 +255,8 @@ mod tests {
             risk_free_rate: 0.04,
             volatility: 2.1,
             sharpe_ratio: 0.8,
+            sortino_ratio: 1.1,
+            half_life_bars: Some(12.5),
         };
 
         std::fs::create_dir_all(&dir).unwrap();

@@ -37,9 +37,21 @@ pub struct BacktestResult {
     pub trades: usize,
     pub equity_curve: Vec<f64>,   // NEW: cumulative net PnL at each bar, for equity-curve plots
     pub max_drawdown: f64,        // NEW: largest peak-to-trough drop in the equity curve
-    pub risk_free_rate: f64,      // NEW: annualized risk-free rate used in the Sharpe ratio below
+    pub risk_free_rate: f64,      // NEW: annualized risk-free rate used in the Sharpe/Sortino ratios below
     pub volatility: f64,          // NEW: annualized volatility of per-bar equity changes
     pub sharpe_ratio: f64,        // NEW: annualized, risk-free-adjusted Sharpe ratio
+    pub sortino_ratio: f64,       // NEW: like Sharpe, but only penalizes downside moves (see sortino_ratio() below)
+    // NEW: Ornstein-Uhlenbeck half-life (in bars) of the underlying spread
+    // this pair trades -- see model::spread::half_life() for the full
+    // explanation. This field is NOT computed in here: half-life is a
+    // property of the *spread* (price_x - alpha - beta*price_y), and this
+    // function only ever sees the raw x/y price legs plus a list of
+    // already-decided signals, not the alpha/beta that produced them. The
+    // caller (main.rs) computes it once per pair from the spread it built,
+    // then copies it onto this struct -- the same pattern already used for
+    // `pair` and `threshold` above. `None` means the spread showed no
+    // measurable mean reversion in this sample.
+    pub half_life_bars: Option<f64>,
 }
 
 pub fn backtest_pair(
@@ -106,6 +118,7 @@ pub fn backtest_pair(
     let max_drawdown = max_drawdown(&equity_curve);
     let volatility = volatility(&equity_curve);
     let sharpe_ratio = sharpe_ratio(&equity_curve, RISK_FREE_RATE_ANNUAL);
+    let sortino_ratio = sortino_ratio(&equity_curve, RISK_FREE_RATE_ANNUAL);
 
     BacktestResult {
         pair: ("".into(), "".into()),
@@ -118,6 +131,8 @@ pub fn backtest_pair(
         risk_free_rate: RISK_FREE_RATE_ANNUAL,
         volatility,
         sharpe_ratio,
+        sortino_ratio,
+        half_life_bars: None, // filled in by the caller -- see field doc comment above
     }
 }
 
@@ -173,6 +188,78 @@ fn sharpe_ratio(equity: &[f64], risk_free_rate_annual: f64) -> f64 {
     }
     let rf_per_bar = risk_free_rate_annual / TRADING_BARS_PER_YEAR;
     ((mean - rf_per_bar) / sd) * TRADING_BARS_PER_YEAR.sqrt()
+}
+
+// PLAIN-LANGUAGE EXPLANATION OF WHY THIS EXISTS ALONGSIDE SHARPE:
+// The Sharpe ratio above divides by the FULL standard deviation of returns
+// -- which treats a big, welcome up-day exactly the same as an equally big,
+// unwelcome down-day, because squaring a deviation throws away its sign.
+// For a mean-reversion strategy in particular, the return distribution is
+// often lumpy/skewed (many small gains as the spread creeps back to its
+// mean, occasional sharp losses when it doesn't), so penalizing upside
+// swings as if they were risk can understate how good the strategy really
+// is. The Sortino ratio (Sortino & Price, 1994, "Performance Measurement
+// in a Downside Risk Framework," The Journal of Investing) fixes this by
+// only counting deviations BELOW a minimum-acceptable-return (MAR) hurdle
+// in the denominator -- days that beat the hurdle contribute zero "risk,"
+// no matter how large the gain. This function uses the same per-bar
+// risk-free rate as the Sharpe ratio above as that hurdle, so the two
+// ratios share an identical numerator (excess return over the risk-free
+// rate) and differ ONLY in which kind of volatility divides it -- making
+// them directly comparable side by side.
+fn sortino_ratio(equity: &[f64], risk_free_rate_annual: f64) -> f64 {
+    if equity.len() < 3 {
+        return 0.0;
+    }
+    let returns = bar_returns(equity);
+
+    // Guard #1: if the RAW returns have (essentially) zero variance --
+    // e.g. a strategy that generated zero trades, so every single bar's
+    // return is identically 0.0 -- there is no meaningful risk-adjusted
+    // ratio to report, exactly like sharpe_ratio's guard above. This check
+    // has to come BEFORE the downside-only calculation below: a constant
+    // 0.0 return sits *below* a positive risk-free hurdle on every single
+    // bar, which has zero variance in that shortfall but is NOT zero --
+    // without this guard, a strategy that simply never traded would
+    // compute a large, nonsensical NEGATIVE Sortino ratio (found exactly
+    // this way while testing: an idle pair scored Sortino ≈ -15.9, while
+    // its Sharpe correctly showed 0.0 for the same idle equity curve).
+    let (_, raw_sd) = mean_and_sd(&returns);
+    if raw_sd <= 1e-12 {
+        return 0.0;
+    }
+
+    let rf_per_bar = risk_free_rate_annual / TRADING_BARS_PER_YEAR;
+    let mean = returns.iter().sum::<f64>() / returns.len() as f64;
+
+    // "Downside deviation": like a standard deviation, but bars that beat
+    // the risk-free hurdle are treated as contributing zero risk (squared
+    // deviation of 0), instead of counting their distance from the mean
+    // like an ordinary standard deviation would.
+    let downside_sum_sq: f64 = returns
+        .iter()
+        .map(|r| {
+            let excess_over_hurdle = r - rf_per_bar;
+            if excess_over_hurdle < 0.0 {
+                excess_over_hurdle * excess_over_hurdle
+            } else {
+                0.0
+            }
+        })
+        .sum();
+    let downside_deviation = (downside_sum_sq / returns.len() as f64).sqrt();
+
+    // Guard #2: the strategy DID have real variance overall (guard #1
+    // passed), but never once fell below the risk-free hurdle (e.g. every
+    // single trade was a winner) -- downside_deviation is ~0 here for a
+    // completely different, much rarer reason than guard #1. Dividing by
+    // it would blow up toward +infinity; report 0.0 rather than an
+    // unbounded ratio, the same conservative choice sharpe_ratio makes
+    // for its own near-zero-denominator case.
+    if downside_deviation <= 1e-12 {
+        return 0.0;
+    }
+    ((mean - rf_per_bar) / downside_deviation) * TRADING_BARS_PER_YEAR.sqrt()
 }
 
 #[cfg(test)]
@@ -244,5 +331,32 @@ mod tests {
                  "gross pnl changed when only cost_bps changed: {} vs {}",
                  implied_gross_costed, result_zero.total_pnl);
         assert!(result_costed.total_costs > 0.0, "expected nonzero costs given many position changes");
+    }
+
+    #[test]
+    fn sortino_is_zero_not_negative_for_a_pair_that_never_traded() {
+        // Regression test for a real bug found while validating this
+        // pipeline's output: a pair whose z-score never crossed the entry
+        // threshold produces an all-Flat signal vector, so its equity
+        // curve is identically 0.0 at every bar. A flat 0% return sits
+        // just below a POSITIVE risk-free rate every single day, with
+        // zero variance in that shortfall -- which the original downside-
+        // deviation-only guard didn't recognize as "no real signal here,"
+        // and it computed a large, misleading negative Sortino ratio
+        // (~-15.9) for a pair that took no risk and had no position at
+        // all. Sharpe correctly reports 0.0 for the same input; Sortino
+        // must match.
+        let n = 100;
+        let x = vec![100.0; n];
+        let y = vec![50.0; n];
+        let signals = vec![Signal::Flat; n];
+
+        let result = backtest_pair(&x, &y, &signals, 1.0, 0.0002);
+        assert_eq!(result.trades, 0);
+        assert_eq!(result.sharpe_ratio, 0.0);
+        assert_eq!(
+            result.sortino_ratio, 0.0,
+            "an all-Flat (never-traded) equity curve must score Sortino 0.0, matching Sharpe -- not a large negative number"
+        );
     }
 }
